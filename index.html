@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Map — Pari Chowk ↔ Alipur meetup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    :root {
+      --surface: rgba(15, 23, 42, 0.92);
+      --surface-2: rgba(30, 41, 59, 0.95);
+      --border: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --a: #38bdf8;
+      --b: #f472b6;
+      --mid: #34d399;
+      --spot: #fbbf24;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--text);
+      background: #0f172a;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .leaflet-container {
+      font-family: "DM Sans", system-ui, sans-serif;
+    }
+
+    .leaflet-div-icon.person-pin,
+    .leaflet-div-icon.venue-pin {
+      border: none;
+      background: transparent;
+    }
+
+    /* Top bar */
+    .top-bar {
+      position: absolute;
+      z-index: 1100;
+      top: max(0.65rem, env(safe-area-inset-top));
+      left: max(0.65rem, env(safe-area-inset-left));
+      right: max(0.65rem, env(safe-area-inset-right));
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+
+    .top-bar > * {
+      pointer-events: auto;
+    }
+
+    .top-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 0.5rem;
+      max-width: min(100%, 900px);
+    }
+
+    .title-card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.65rem 0.85rem;
+      flex: 1 1 240px;
+      min-width: min(100%, 260px);
+      max-width: min(100%, 520px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .filter-card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.55rem 0.6rem 0.6rem;
+      flex: 1 1 200px;
+      min-width: min(100%, 200px);
+      max-width: min(100%, 420px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .filter-card .filter-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0;
+      font-size: 0.62rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .filter-card .filter-heading .material-symbols-outlined {
+      font-size: 1rem;
+      font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+      color: #7dd3fc;
+    }
+
+    .title-card h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(0.95rem, 3.2vw, 1.15rem);
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+      line-height: 1.25;
+    }
+
+    .title-card p {
+      margin: 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.4;
+      max-width: 48ch;
+    }
+
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .pill {
+      font-size: 0.68rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pill .lbl { color: var(--muted); margin-right: 0.25rem; }
+    .pill.a strong { color: var(--a); }
+    .pill.b strong { color: var(--b); }
+    .pill.t strong { color: var(--mid); }
+
+    .activity-chips {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.3rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      padding-bottom: 2px;
+    }
+
+    .activity-chips::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .activity-chips::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 4px;
+    }
+
+    .activity-chips button {
+      font-family: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.12rem;
+      padding: 0.4rem 0.3rem 0.38rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 3.15rem;
+      flex: 0 0 auto;
+      min-width: 3.25rem;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .activity-chips button .material-symbols-outlined {
+      font-size: 1.35rem;
+      font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+      line-height: 1;
+      opacity: 0.92;
+    }
+
+    .activity-chips button .chip-label {
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      line-height: 1.15;
+      text-align: center;
+    }
+
+    .activity-chips button:active {
+      transform: scale(0.97);
+    }
+
+    .activity-chips button[aria-pressed="true"] {
+      background: linear-gradient(145deg, rgba(56, 189, 248, 0.28), rgba(52, 211, 153, 0.12));
+      border-color: rgba(56, 189, 248, 0.55);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
+    }
+
+    .activity-chips button[aria-pressed="true"] .material-symbols-outlined {
+      color: #7dd3fc;
+      font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24;
+    }
+
+    .activity-chips button[aria-pressed="true"] .chip-label {
+      color: #e0f2fe;
+    }
+
+    @media (min-width: 520px) {
+      .activity-chips {
+        overflow-x: visible;
+      }
+
+      .activity-chips button {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+    }
+
+    .place-card .cat-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .place-card .cat-tags .cat-pill {
+      font-size: 0.55rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.12rem 0.35rem;
+      border-radius: 6px;
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .place-card .cat-tags .cat-pill .material-symbols-outlined {
+      font-size: 0.85rem;
+      font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 20;
+      opacity: 0.9;
+    }
+
+    .list-empty {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin: 0;
+      padding: 0.5rem 0;
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 0.85rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.4rem 0.65rem;
+      max-width: fit-content;
+    }
+
+    .legend-row span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .legend-row .legend-tools {
+      color: #cbd5e1;
+      gap: 0.2rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    /* Legend: Pari = her (pink), Delhi side = him (blue) — matches map pins */
+    .dot.a { background: var(--b); }
+    .dot.b { background: var(--a); }
+    .dot.m { background: var(--mid); }
+
+    .legend-spots {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      color: #cbd5e1;
+    }
+
+    .legend-spots > .lbl {
+      font-weight: 700;
+      margin-right: 0.1rem;
+    }
+
+    .legend-spots .leg-i {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.15rem;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .legend-spots .leg-i .material-symbols-outlined {
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .legend-spots .leg-i.movies { color: #fcd34d; }
+    .legend-spots .leg-i.cafes { color: #fdba74; }
+    .legend-spots .leg-i.malls { color: #c4b5fd; }
+    .legend-spots .leg-i.fun { color: #f9a8d4; }
+
+    /* Side / bottom panel */
+    .panel {
+      position: absolute;
+      z-index: 1100;
+      bottom: max(0.5rem, env(safe-area-inset-bottom));
+      left: max(0.5rem, env(safe-area-inset-left));
+      right: max(0.5rem, env(safe-area-inset-right));
+      width: auto;
+      max-width: 380px;
+      max-height: min(42vh, 340px);
+      background: var(--surface);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    @media (min-width: 900px) {
+      .panel {
+        top: max(7.5rem, calc(env(safe-area-inset-top) + 6.5rem));
+        bottom: auto;
+        left: auto;
+        right: max(0.75rem, env(safe-area-inset-right));
+        max-height: calc(100dvh - 6rem);
+        width: min(360px, 36vw);
+      }
+    }
+
+    .panel-header {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .panel-header h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .panel-header button {
+      font-family: inherit;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.35rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--a);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .panel-header button:active {
+      transform: scale(0.97);
+    }
+
+    .panel-scroll {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.5rem 0.65rem 0.65rem;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel-hint {
+      font-size: 0.68rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin: 0 0 0.5rem;
+    }
+
+    .place-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.55rem 0.6rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .place-card:last-child { margin-bottom: 0; }
+
+    .place-card h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin: 0 0 0.2rem;
+      line-height: 1.25;
+    }
+
+    .place-card .meta {
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      line-height: 1.35;
+    }
+
+    .place-card .km {
+      font-size: 0.62rem;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 0.4rem;
+    }
+
+    .place-card .km span { color: var(--a); }
+    .place-card .km span.b { color: var(--b); }
+
+    .place-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .place-actions a,
+    .place-actions button {
+      font-family: inherit;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .place-actions button {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fcd34d;
+    }
+
+    .place-actions a {
+      background: rgba(52, 211, 153, 0.12);
+      color: var(--mid);
+    }
+
+    .attrib {
+      position: absolute;
+      z-index: 1100;
+      bottom: max(0.35rem, env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-shadow: 0 1px 3px #000;
+      pointer-events: none;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    @media (min-width: 900px) {
+      .attrib {
+        left: max(0.5rem, env(safe-area-inset-left));
+        transform: none;
+        text-align: left;
+      }
+    }
+
+    .osm-inline {
+      font-size: 0.58rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+      line-height: 1.35;
+    }
+
+    .osm-inline a { color: #7dd3fc; }
+
+    @media (max-width: 899px) {
+      .attrib { display: none; }
+    }
+
+    @media (min-width: 900px) {
+      .osm-inline { display: none; }
+    }
+
+    .attrib a {
+      color: #7dd3fc;
+      pointer-events: auto;
+    }
+
+    /* Leaflet popup */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .leaflet-popup-content {
+      margin: 0.65rem 0.85rem;
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    .leaflet-popup-tip { background: var(--surface-2); }
+
+    .popup-title { font-weight: 800; margin-bottom: 0.35rem; }
+    .popup-km { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .popup-km .ca { color: var(--a); }
+    .popup-km .cb { color: var(--b); }
+    .popup-link {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--mid);
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="map" role="application" aria-label="Full map: Pari Chowk, Alipur, midpoint and venues"></div>
+
+  <div class="top-bar">
+    <div class="top-row">
+      <div class="title-card">
+        <h1><span class="material-symbols-outlined" style="font-size:1.15rem;vertical-align:-3px;opacity:.9;color:#7dd3fc" aria-hidden="true">route</span> Pari Chowk ↔ Alipur</h1>
+        <p>Pan &amp; zoom the map. Tap pins for details. Distances are straight-line km — real drive time is longer.</p>
+        <div class="stats-row" style="margin-top: 0.45rem;">
+          <div class="pill a"><span class="lbl">Pari → mid</span><strong id="kmA">—</strong></div>
+          <div class="pill b"><span class="lbl">Alipur → mid</span><strong id="kmB">—</strong></div>
+          <div class="pill t"><span class="lbl">Total line</span><strong id="kmTot">—</strong></div>
+        </div>
+      </div>
+      <div class="filter-card">
+        <p class="filter-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">interests</span>
+          What’s the plan?
+        </p>
+        <div class="activity-chips" id="activityChips" role="group" aria-label="Filter by activity type"></div>
+      </div>
+    </div>
+    <div class="legend-row" aria-label="Map legend">
+      <span><span class="dot a"></span>Her · Pari Chowk</span>
+      <span><span class="dot b"></span>Him · Delhi (Alipur)</span>
+      <span><span class="dot m"></span>Midpoint</span>
+      <span class="legend-spots">
+        <span class="lbl">Meet spots</span>
+        <span class="leg-i movies"><span class="material-symbols-outlined" aria-hidden="true">movie</span>Movies</span>
+        <span class="leg-i cafes"><span class="material-symbols-outlined" aria-hidden="true">local_cafe</span>Cafés</span>
+        <span class="leg-i malls"><span class="material-symbols-outlined" aria-hidden="true">storefront</span>Malls</span>
+        <span class="leg-i fun"><span class="material-symbols-outlined" aria-hidden="true">celebration</span>Fun</span>
+      </span>
+      <span class="legend-tools"><span class="material-symbols-outlined" style="font-size:0.95rem;opacity:.85" aria-hidden="true">touch_app</span> Tap pins</span>
+    </div>
+  </div>
+
+  <aside class="panel" aria-label="Suggested places list">
+    <div class="panel-header">
+      <h2 id="panelTitle">Suggested meet spots</h2>
+      <button type="button" id="btnFitAll">Fit map</button>
+    </div>
+    <div class="panel-scroll">
+      <p class="panel-hint" id="midHint"></p>
+      <div id="placeList"></div>
+      <p class="osm-inline">
+        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+      </p>
+    </div>
+  </aside>
+
+  <p class="attrib">
+    © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+  </p>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    (function () {
+      const R_KM = 6371;
+
+      const A = {
+        name: "Pari Chowk, Greater Noida",
+        lat: 28.4631285,
+        lng: 77.5080985,
+      };
+
+      const B = {
+        name: "Alipur, Delhi 110036",
+        lat: 28.7973118,
+        lng: 77.1386670,
+      };
+
+      const FILTER_DEFS = [
+        { id: "all", label: "All", icon: "map" },
+        { id: "movies", label: "Movies", icon: "movie" },
+        { id: "cafes", label: "Cafés", icon: "local_cafe" },
+        { id: "malls", label: "Malls", icon: "storefront" },
+        { id: "fun", label: "Fun", icon: "celebration" },
+      ];
+
+      const CAT_LABELS = {
+        movies: "Movies",
+        cafes: "Cafés",
+        malls: "Malls",
+        fun: "Fun",
+      };
+
+      const CAT_ICONS = {
+        movies: "movie",
+        cafes: "local_cafe",
+        malls: "storefront",
+        fun: "celebration",
+      };
+
+      const venues = [
+        {
+          name: "V3S Mall (Preet Vihar)",
+          lat: 28.6371638,
+          lng: 77.2865036,
+          tag: "Movies · food · metro nearby",
+          why: "Classic East Delhi mall — easy for both sides.",
+          cats: ["movies", "malls"],
+        },
+        {
+          name: "Akshardham Temple & complex",
+          lat: 28.6125167,
+          lng: 77.2773184,
+          tag: "Walk · exhibits · evening show",
+          why: "Experience day — gardens and memorable outing.",
+          cats: ["fun"],
+        },
+        {
+          name: "Shipra Mall, Indirapuram",
+          lat: 28.6338240,
+          lng: 77.3696585,
+          tag: "Movies · dining",
+          why: "Slightly toward Ghaziabad / eastern approach.",
+          cats: ["movies", "malls"],
+        },
+        {
+          name: "DLF Mall of India, Noida",
+          lat: 28.5674442,
+          lng: 77.3211240,
+          tag: "Movies · big food court",
+          why: "Leans toward Greater Noida side — premium mall day.",
+          cats: ["movies", "malls"],
+        },
+        {
+          name: "Worlds of Wonder (WOW), Noida",
+          lat: 28.5649333,
+          lng: 77.3259652,
+          tag: "Rides · water park · next to Mall of India",
+          why: "Full activity day — pair with mall dinner after.",
+          cats: ["fun"],
+        },
+        {
+          name: "Preet Vihar / Vikas Marg (cafés)",
+          lat: 28.6355,
+          lng: 77.2950,
+          tag: "Coffee · casual meals",
+          why: "Low-key — pick a café along Vikas Marg.",
+          cats: ["cafes"],
+        },
+      ];
+
+      function toRad(d) {
+        return (d * Math.PI) / 180;
+      }
+
+      function haversineKm(lat1, lng1, lat2, lng2) {
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) *
+            Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R_KM * c;
+      }
+
+      function midpoint(a, b) {
+        return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+      }
+
+      function mapsLink(lat, lng) {
+        return "https://www.google.com/maps?q=" + lat + "," + lng;
+      }
+
+      function popupHtml(title, extraHtml, lat, lng, ka, kb) {
+        return (
+          '<div class="popup-title">' +
+          title +
+          "</div>" +
+          (extraHtml ? "<div>" + extraHtml + "</div>" : "") +
+          (ka != null
+            ? '<div class="popup-km"><span class="ca">Pari: ' +
+              ka.toFixed(1) +
+              ' km</span> · <span class="cb">Alipur: ' +
+              kb.toFixed(1) +
+              " km</span></div>"
+            : "") +
+          '<a class="popup-link" href="' +
+          mapsLink(lat, lng) +
+          '" target="_blank" rel="noopener">Open in Google Maps</a>'
+        );
+      }
+
+      const mid = midpoint(A, B);
+      const dAB = haversineKm(A.lat, A.lng, B.lat, B.lng);
+      const dAM = haversineKm(A.lat, A.lng, mid.lat, mid.lng);
+      const dBM = haversineKm(B.lat, B.lng, mid.lat, mid.lng);
+
+      document.getElementById("kmA").textContent = dAM.toFixed(1) + " km";
+      document.getElementById("kmB").textContent = dBM.toFixed(1) + " km";
+      document.getElementById("kmTot").textContent = dAB.toFixed(1) + " km";
+
+      const midHintEl = document.getElementById("midHint");
+      const panelTitleEl = document.getElementById("panelTitle");
+      const activityChipsEl = document.getElementById("activityChips");
+      const listEl = document.getElementById("placeList");
+
+      let activeFilter = "all";
+
+      function venueMatches(v) {
+        if (activeFilter === "all") return true;
+        return v.cats && v.cats.indexOf(activeFilter) !== -1;
+      }
+
+      function setMidHint() {
+        var f = FILTER_DEFS.find(function (x) {
+          return x.id === activeFilter;
+        });
+        var label = f ? f.label : "All";
+        midHintEl.textContent =
+          "Midpoint: East Delhi / NH24 (Preet Vihar–Patparganj). " +
+          (activeFilter === "all"
+            ? "Pink = her, blue = him. Meet spots use icons (movies, cafés, malls, fun)."
+            : "Showing " +
+              label +
+              " — tap a card to fly there. Pink & blue = the two of you.");
+        panelTitleEl.textContent =
+          activeFilter === "all" ? "Suggested meet spots" : "Spots — " + label;
+      }
+
+      const map = L.map("map", {
+        zoomControl: true,
+        scrollWheelZoom: true,
+      }).setView([mid.lat, mid.lng], 10);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "",
+        maxZoom: 19,
+      }).addTo(map);
+
+      L.control.scale({ imperial: false, metric: true }).addTo(map);
+
+      function personPinHtml(emoji, ringHex) {
+        return (
+          '<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;' +
+          "background:rgba(15,23,42,0.82);border:3px solid " +
+          ringHex +
+          ';border-radius:50%;box-shadow:0 2px 14px rgba(0,0,0,.5);' +
+          'font-size:22px;line-height:1" role="img" aria-hidden="true">' +
+          emoji +
+          "</div>"
+        );
+      }
+
+      const iconA = L.divIcon({
+        className: "person-pin",
+        html: personPinHtml("👩", "#f472b6"),
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+      const iconB = L.divIcon({
+        className: "person-pin",
+        html: personPinHtml("👨", "#38bdf8"),
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+      const iconMid = L.divIcon({
+        className: "m",
+        html: '<div style="width:18px;height:18px;background:#34d399;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+
+      const VENUE_PIN_STYLES = [
+        { id: "movies", sym: "movie", border: "#f59e0b", fg: "#fcd34d" },
+        { id: "cafes", sym: "local_cafe", border: "#ea580c", fg: "#fdba74" },
+        { id: "malls", sym: "storefront", border: "#8b5cf6", fg: "#c4b5fd" },
+        { id: "fun", sym: "celebration", border: "#db2777", fg: "#f9a8d4" },
+      ];
+
+      function venuePinStyle(v) {
+        var cats = v.cats || [];
+        for (var i = 0; i < VENUE_PIN_STYLES.length; i++) {
+          if (cats.indexOf(VENUE_PIN_STYLES[i].id) !== -1) {
+            return VENUE_PIN_STYLES[i];
+          }
+        }
+        return { sym: "place", border: "#64748b", fg: "#94a3b8" };
+      }
+
+      function makeVenueDivIcon(v) {
+        var p = venuePinStyle(v);
+        var html =
+          '<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
+          "background:rgba(15,23,42,0.92);border:2px solid " +
+          p.border +
+          ';box-shadow:0 2px 12px rgba(0,0,0,.5)">' +
+          '<span class="material-symbols-outlined" style="font-size:21px;color:' +
+          p.fg +
+          '">' +
+          p.sym +
+          "</span></div>";
+        return L.divIcon({
+          className: "venue-pin",
+          html: html,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+      }
+
+      const mA = L.marker([A.lat, A.lng], { icon: iconA })
+        .addTo(map)
+        .bindPopup(
+          popupHtml(
+            "👩 Her — Pari Chowk",
+            "<strong>Greater Noida</strong><br><small>" + A.name + "</small>",
+            A.lat,
+            A.lng,
+            null,
+            null
+          )
+        );
+
+      const mB = L.marker([B.lat, B.lng], { icon: iconB })
+        .addTo(map)
+        .bindPopup(
+          popupHtml(
+            "👨 Him — New Delhi side",
+            "<strong>Alipur, North Delhi · 110036</strong><br><small>Delhi end of the meetup line</small>",
+            B.lat,
+            B.lng,
+            null,
+            null
+          )
+        );
+
+      const mMid = L.marker([mid.lat, mid.lng], { icon: iconMid })
+        .addTo(map)
+        .bindPopup(
+          popupHtml(
+            "Fair midpoint",
+            "Geographic middle of both locations — meet somewhere in this band.",
+            mid.lat,
+            mid.lng,
+            dAM,
+            dBM
+          )
+        );
+
+      const routeLine = L.polyline(
+        [
+          [A.lat, A.lng],
+          [B.lat, B.lng],
+        ],
+        { color: "#94a3b8", weight: 4, opacity: 0.85, dashArray: "10 8" }
+      ).addTo(map);
+
+      const fullBounds = L.latLngBounds([A.lat, A.lng], [B.lat, B.lng]);
+      venues.forEach(function (v) {
+        fullBounds.extend([v.lat, v.lng]);
+      });
+
+      const venueMarkers = [];
+
+      venues.forEach(function (v) {
+        const ka = haversineKm(A.lat, A.lng, v.lat, v.lng);
+        const kb = haversineKm(B.lat, B.lng, v.lat, v.lng);
+        const catsLine = (v.cats || [])
+          .map(function (c) {
+            return CAT_LABELS[c] || c;
+          })
+          .join(" · ");
+        const mk = L.marker([v.lat, v.lng], { icon: makeVenueDivIcon(v) }).bindPopup(
+          popupHtml(
+            v.name,
+            '<span style="font-size:0.7rem;color:#94a3b8">' +
+              catsLine +
+              "</span><br>" +
+              v.tag +
+              "<br><small style=color:#94a3b8>" +
+              v.why +
+              "</small>",
+            v.lat,
+            v.lng,
+            ka,
+            kb
+          )
+        );
+        venueMarkers.push({ marker: mk, v: v, ka: ka, kb: kb });
+      });
+
+      function fitFiltered() {
+        const b = L.latLngBounds([A.lat, A.lng], [B.lat, B.lng]);
+        var anyVenue = false;
+        venueMarkers.forEach(function (row) {
+          if (venueMatches(row.v)) {
+            b.extend([row.v.lat, row.v.lng]);
+            anyVenue = true;
+          }
+        });
+        b.extend([mid.lat, mid.lng]);
+        map.fitBounds(b, { padding: [50, 50], maxZoom: anyVenue ? 12 : 11 });
+      }
+
+      function fitAll() {
+        map.fitBounds(fullBounds, { padding: [50, 50], maxZoom: 12 });
+      }
+
+      function applyFilter() {
+        venueMarkers.forEach(function (row) {
+          if (venueMatches(row.v)) {
+            if (!map.hasLayer(row.marker)) row.marker.addTo(map);
+          } else {
+            if (map.hasLayer(row.marker)) map.removeLayer(row.marker);
+          }
+        });
+        setMidHint();
+        rebuildList();
+      }
+
+      function rebuildList() {
+        listEl.innerHTML = "";
+        var visible = venueMarkers.filter(function (row) {
+          return venueMatches(row.v);
+        });
+        visible.sort(function (x, y) {
+          return Math.abs(x.ka - x.kb) - Math.abs(y.ka - y.kb);
+        });
+        if (!visible.length) {
+          var empty = document.createElement("p");
+          empty.className = "list-empty";
+          empty.textContent =
+            "No places in this category yet. Try All, Malls, or Movies — or zoom the map to the blue/pink pins.";
+          listEl.appendChild(empty);
+          return;
+        }
+        visible.forEach(function (row, idx) {
+          const v = row.v;
+          const imb = Math.abs(row.ka - row.kb);
+          const tagsHtml = (v.cats || [])
+            .map(function (c) {
+              var g = CAT_ICONS[c] || "place";
+              return (
+                '<span class="cat-pill"><span class="material-symbols-outlined" aria-hidden="true">' +
+                g +
+                "</span>" +
+                (CAT_LABELS[c] || c) +
+                "</span>"
+              );
+            })
+            .join("");
+          const card = document.createElement("div");
+          card.className = "place-card";
+          card.innerHTML =
+            '<div class="cat-tags">' +
+            tagsHtml +
+            "</div>" +
+            "<h3>" +
+            (idx + 1) +
+            ". " +
+            v.name +
+            "</h3>" +
+            '<p class="meta">' +
+            v.tag +
+            "</p>" +
+            '<p class="km"><span>Pari ' +
+            row.ka.toFixed(1) +
+            ' km</span> · <span class="b">Alipur ' +
+            row.kb.toFixed(1) +
+            " km</span> · Δ " +
+            imb.toFixed(1) +
+            " km</p>" +
+            '<div class="place-actions">' +
+            '<button type="button" class="focus-btn">Show on map</button>' +
+            '<a href="' +
+            mapsLink(v.lat, v.lng) +
+            '" target="_blank" rel="noopener">Directions</a>' +
+            "</div>";
+          card.querySelector(".focus-btn").addEventListener("click", function () {
+            map.flyTo([v.lat, v.lng], Math.max(map.getZoom(), 14), { duration: 0.6 });
+            row.marker.openPopup();
+          });
+          listEl.appendChild(card);
+        });
+      }
+
+      FILTER_DEFS.forEach(function (def) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("aria-pressed", def.id === "all" ? "true" : "false");
+        btn.dataset.filter = def.id;
+        btn.setAttribute("aria-label", def.label);
+        const ic = document.createElement("span");
+        ic.className = "material-symbols-outlined";
+        ic.setAttribute("aria-hidden", "true");
+        ic.textContent = def.icon;
+        const lbl = document.createElement("span");
+        lbl.className = "chip-label";
+        lbl.textContent = def.label;
+        btn.appendChild(ic);
+        btn.appendChild(lbl);
+        btn.addEventListener("click", function () {
+          activeFilter = def.id;
+          activityChipsEl.querySelectorAll("button").forEach(function (b) {
+            b.setAttribute("aria-pressed", b.dataset.filter === activeFilter ? "true" : "false");
+          });
+          applyFilter();
+        });
+        activityChipsEl.appendChild(btn);
+      });
+
+      applyFilter();
+      fitAll();
+
+      document.getElementById("btnFitAll").addEventListener("click", fitFiltered);
+
+      window.addEventListener("resize", function () {
+        map.invalidateSize();
+      });
+    })();
+  </script>
+</body>
+</html>
