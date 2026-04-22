@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#080c14" />
-  <title>Halfway There 💌 Ishika ↔ Arpit</title>
+  <title>Fair meetup planner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
@@ -234,25 +234,22 @@
       display: flex;
       margin-bottom: 0.4rem;
     }
-    .fairness-bar-track .seg-her {
-      background: linear-gradient(to right, #db2777, #f472b6);
-      transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .fairness-bar-track .seg-him {
-      background: linear-gradient(to right, #38bdf8, #0ea5e9);
-      transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .fairness-bar-track .fairness-seg {
+      min-width: 6px;
+      transition: width 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
     }
 
     .fairness-labels {
       display: flex;
-      justify-content: space-between;
-      gap: 0.5rem;
-      font-size: 0.6rem;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.65rem;
+      font-size: 0.58rem;
       font-weight: 600;
       margin-bottom: 0.25rem;
+      line-height: 1.35;
     }
-    .fairness-labels .fl-her { color: var(--her); }
-    .fairness-labels .fl-him { color: var(--him); }
+    .fairness-labels .fl-person { white-space: nowrap; }
 
     .fairness-verdict {
       font-size: 0.62rem;
@@ -304,6 +301,32 @@
       scrollbar-width: none;
     }
     .filter-row::-webkit-scrollbar { display: none; }
+    .radius-row {
+      margin-top: 0.42rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.35rem 0.45rem;
+      align-items: center;
+    }
+    .radius-row label {
+      grid-column: 1 / -1;
+      font-size: 0.56rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .radius-row input[type="range"] {
+      width: 100%;
+      accent-color: #34d399;
+    }
+    .radius-val {
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: #6ee7b7;
+      min-width: 3.3rem;
+      text-align: right;
+    }
 
     .filter-btn {
       font-family: "DM Sans", sans-serif;
@@ -383,10 +406,123 @@
       opacity: 0.85;
       white-space: nowrap;
     }
+    .legend-bar .legend-busy {
+      color: #93c5fd;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .legend-bar .legend-busy.hidden { display: none; }
+    .legend-bar .legend-mode-btn {
+      font: inherit;
+      color: var(--text);
+      background: rgba(148,163,184,0.14);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.08rem 0.34rem;
+      cursor: pointer;
+    }
+    .legend-bar .legend-mode-btn.active {
+      border-color: rgba(52,211,153,0.5);
+      background: rgba(52,211,153,0.2);
+      color: #86efac;
+    }
     .ldot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
     .ldot.her { background: var(--her); }
     .ldot.him { background: var(--him); }
     .ldot.mid { background: var(--mid-col); }
+    .ldot.tmid { background: #f97316; }
+
+    @media (max-width: 700px) {
+      .top-bar {
+        left: max(0.35rem, env(safe-area-inset-left));
+        right: max(0.35rem, env(safe-area-inset-right));
+        top: max(0.35rem, env(safe-area-inset-top));
+      }
+      .top-main-row {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        gap: 0.32rem;
+      }
+      .title-card,
+      .fairness-card,
+      .filter-card {
+        min-width: 100%;
+        max-width: 100%;
+      }
+      .title-card { padding: 0.38rem 0.5rem; }
+      .title-eyebrow { display: none; }
+      .title-main {
+        font-size: 1rem;
+        margin-bottom: 0.15rem;
+      }
+      .title-sub { display: none !important; }
+      .stats-row {
+        gap: 0.2rem;
+        overflow-x: auto;
+      }
+      .stat-chip {
+        font-size: 0.56rem;
+        padding: 0.22rem 0.36rem;
+      }
+      .fairness-card { padding: 0.38rem 0.5rem 0.42rem; }
+      .fairness-heading {
+        font-size: 0.5rem;
+        margin-bottom: 0.24rem;
+      }
+      .fairness-context { font-size: 0.52rem; margin-bottom: 0.22rem; }
+      .fairness-labels { gap: 0.2rem 0.45rem; margin-bottom: 0.14rem; }
+      .fairness-labels .fl-person { font-size: 0.53rem; }
+      .fairness-verdict {
+        font-size: 0.52rem;
+        line-height: 1.25;
+        max-height: 2.5em;
+        overflow: hidden;
+      }
+      .filter-card { padding: 0.34rem 0.42rem 0.38rem; }
+      .filter-heading { display: none; }
+      .legend-bar {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 0.18rem 0.28rem;
+      }
+      .legend-bar .legend-mode-btn {
+        padding: 0.13rem 0.33rem;
+        font-size: 0.52rem;
+      }
+      .filter-btn {
+        min-width: 2.55rem;
+        padding: 0.32rem 0.4rem;
+        gap: 0.04rem;
+      }
+      .filter-btn .material-symbols-outlined { font-size: 1rem; }
+      .filter-btn .flbl {
+        font-size: 0.5rem;
+        letter-spacing: 0.01em;
+      }
+      .radius-row { margin-top: 0.24rem; gap: 0.18rem 0.34rem; }
+      .radius-row label { font-size: 0.49rem; }
+      .radius-val { font-size: 0.58rem; min-width: 2.8rem; }
+      .panel-btn {
+        font-size: 0.62rem;
+        padding: 0.32rem 0.54rem;
+      }
+      .panel {
+        left: max(0.35rem, env(safe-area-inset-left));
+        right: max(0.35rem, env(safe-area-inset-right));
+        max-width: none;
+        max-height: min(44vh, 350px);
+        border-radius: 14px;
+      }
+      .panel-header { padding: 0.45rem 0.54rem; }
+      .panel-header h2 { font-size: 0.72rem; line-height: 1.2; }
+      .panel-scroll { padding: 0.5rem 0.55rem 0.65rem; }
+      .venue-card { padding: 0.5rem 0.52rem; margin-bottom: 0.36rem; }
+      .venue-card h3 { font-size: 0.7rem; }
+      .venue-meta, .drive-row, .fairness-micro { font-size: 0.58rem; }
+      .venue-actions { gap: 0.3rem; }
+      .venue-actions .btn-show,
+      .venue-actions .btn-dir { font-size: 0.58rem; padding: 0.24rem 0.38rem; }
+    }
 
 
     /* ── PANEL ── */
@@ -452,6 +588,11 @@
     }
     .panel-btn.fit { background: rgba(56,189,248,0.12); color: var(--him); }
     .panel-btn.fit:hover { background: rgba(56,189,248,0.22); }
+    .panel-btn.group { background: rgba(148,163,184,0.1); color: #a8b8cc; }
+    .panel-btn.group:hover { background: rgba(148,163,184,0.18); }
+    .panel-btn.collapse { background: rgba(148,163,184,0.12); color: #cbd5e1; }
+    .panel-btn.collapse:hover { background: rgba(148,163,184,0.2); }
+    .panel-btn.collapse .material-symbols-outlined { font-size: 1rem; line-height: 1; }
     .panel-btn.share { background: rgba(251,191,36,0.12); color: var(--spot); }
     .panel-btn.share:hover { background: rgba(251,191,36,0.22); }
     .panel-btn:active { transform: scale(0.96); }
@@ -464,6 +605,38 @@
       min-height: 0;
       scrollbar-width: thin;
       scrollbar-color: var(--faint) transparent;
+    }
+    .panel.collapsed .panel-scroll { display: none; }
+    .panel.collapsed {
+      top: auto;
+      bottom: max(0.65rem, env(safe-area-inset-bottom));
+      right: max(0.65rem, env(safe-area-inset-right));
+      left: auto;
+      width: 210px;
+      max-width: 210px;
+      max-height: none;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      border-color: rgba(125,211,252,0.55);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(125,211,252,0.35), 0 0 18px rgba(125,211,252,0.25);
+    }
+    .panel.collapsed .panel-header {
+      padding: 0.42rem 0.5rem;
+      gap: 0.35rem;
+    }
+    .panel.collapsed .panel-header h2 {
+      font-size: 0.66rem;
+      line-height: 1.15;
+      letter-spacing: 0.01em;
+    }
+    .panel.collapsed .panel-header-btns { gap: 0.22rem; }
+    .panel.collapsed .panel-btn.group,
+    .panel.collapsed .panel-btn.share,
+    .panel.collapsed .panel-btn.fit { display: none; }
+    .panel.collapsed .panel-btn.collapse {
+      padding: 0.2rem 0.35rem;
+      border-radius: 7px;
+      min-width: auto;
     }
 
     /* ── VENUE CARDS ── */
@@ -642,57 +815,300 @@
     .osm-inline { font-size: 0.58rem; color: var(--muted); margin-top: 0.5rem; }
     .osm-inline a { color: #7dd3fc; }
     @media (min-width: 900px) { .osm-inline { display: none; } }
+
+    /* ── SETUP ONBOARDING ── */
+    body:not(.setup-done) .top-bar,
+    body:not(.setup-done) .panel,
+    body:not(.setup-done) .attrib { visibility: hidden; }
+
+    .setup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+      background: rgba(4, 8, 14, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .setup-overlay.hidden { display: none; }
+
+    .setup-card {
+      width: min(100%, 380px);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.15rem 1rem;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+    }
+    .setup-card h2 {
+      font-family: "Syne", sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.02em;
+    }
+    .setup-card p.setup-lead {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: 0.85rem;
+    }
+    .setup-field { margin-bottom: 0.75rem; }
+    .setup-field label {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+    .setup-field input {
+      width: 100%;
+      font-family: "DM Sans", sans-serif;
+      font-size: 0.88rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+    .setup-field input:focus {
+      outline: none;
+      border-color: rgba(52,211,153,0.45);
+      box-shadow: 0 0 0 2px rgba(52,211,153,0.12);
+    }
+    .setup-names-wrap {
+      max-height: min(46vh, 320px);
+      overflow-y: auto;
+      margin-bottom: 0.65rem;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--faint) transparent;
+    }
+
+    .setup-person-row {
+      display: grid;
+      grid-template-columns: 1fr min(7.5rem, 28vw);
+      gap: 0.45rem 0.55rem;
+      align-items: end;
+      margin-bottom: 0.65rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .setup-person-row:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+    .setup-error {
+      font-size: 0.72rem;
+      color: #fb7185;
+      line-height: 1.4;
+      margin: 0.35rem 0 0.5rem;
+    }
+    .setup-geocode-status {
+      font-size: 0.7rem;
+      color: var(--mid-col);
+      margin: 0 0 0.45rem;
+      line-height: 1.35;
+    }
+    .setup-actions {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .setup-actions button {
+      font-family: "DM Sans", sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.45rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .setup-actions button.primary {
+      background: rgba(52,211,153,0.18);
+      border-color: rgba(52,211,153,0.45);
+      color: #6ee7b7;
+    }
+    .setup-actions button:active { transform: scale(0.97); }
+
+    .place-hint {
+      position: fixed;
+      z-index: 2400;
+      left: 50%;
+      transform: translateX(-50%);
+      top: max(0.65rem, calc(env(safe-area-inset-top) + 0.35rem));
+      max-width: min(92vw, 420px);
+      padding: 0.55rem 0.85rem;
+      background: var(--surface-2);
+      border: 1px solid rgba(52,211,153,0.35);
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.35;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+      pointer-events: none;
+    }
+    .place-hint.hidden { display: none; }
+    .setup-card.hidden { display: none; }
+    .place-hint .ph-name { color: var(--mid-col); }
+
+    .plan-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 2550;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(4, 8, 14, 0.66);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .plan-loader.hidden { display: none; }
+    .plan-loader-card {
+      width: min(92vw, 360px);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1rem 0.9rem;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .plan-spinner {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      margin: 0 auto 0.55rem;
+      border: 3px solid rgba(125,211,252,0.3);
+      border-top-color: #7dd3fc;
+      animation: spinLoader 0.9s linear infinite;
+    }
+    @keyframes spinLoader { to { transform: rotate(360deg); } }
+    .plan-loader-title {
+      font-family: "Syne", sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .plan-loader-msg {
+      font-size: 0.76rem;
+      color: var(--muted);
+      line-height: 1.4;
+      min-height: 2.2em;
+    }
+
+    .stat-chip.person .sval { color: inherit; }
+    .stat-chip.total .sval { color: var(--mid-col); }
+
+    .venue-dist-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 0.62rem;
+      margin-top: 0.25rem;
+    }
+    .venue-dist-rows span { font-weight: 600; }
+
+    .load-more-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 0.55rem;
+    }
+    .load-more-btn {
+      font-family: "DM Sans", sans-serif;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.4rem 0.7rem;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: rgba(56,189,248,0.14);
+      color: #93c5fd;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .load-more-btn:hover { background: rgba(56,189,248,0.24); }
+    .load-more-btn:active { transform: scale(0.97); }
   </style>
 </head>
 <body>
-  <div id="map" role="application" aria-label="Midpoint map between Ishika at Pari Chowk and Arpit at Alipur"></div>
+  <div id="map" role="application" aria-label="Meetup map — place each person, then compare venues"></div>
+
+  <div id="setupOverlay" class="setup-overlay" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="setup-card" id="setupStepCount">
+      <h2 id="setupTitle">Who’s meeting?</h2>
+      <p class="setup-lead">How many people are joining? Next you’ll enter each person’s name and <strong>India PIN code</strong> (we look up a central point for that PIN). We rank hangout spots by <strong>least total travel</strong> (sum of crow‑flies km).</p>
+      <div class="setup-field">
+        <label for="inputCount">Number of people</label>
+        <input id="inputCount" type="number" inputmode="numeric" min="2" max="8" value="2" />
+      </div>
+      <div class="setup-actions">
+        <button type="button" class="primary" id="btnCountNext">Continue</button>
+      </div>
+    </div>
+    <div class="setup-card hidden" id="setupStepNames">
+      <h2>Names &amp; PIN codes</h2>
+      <p class="setup-lead">6-digit India PIN per person (Photon / OSM). The green map dot is <strong>cost‑optimized</strong> (Σd + W·variance on trip lengths), not a simple average. Venues are ranked by total km. Or place pins on the map yourself.</p>
+      <div class="setup-names-wrap" id="setupNamesFields"></div>
+      <p class="setup-geocode-status hidden" id="setupGeocodeStatus" aria-live="polite"></p>
+      <p class="setup-error hidden" id="setupGeocodeError" role="alert"></p>
+      <div class="setup-actions">
+        <button type="button" id="btnNamesBack">Back</button>
+        <button type="button" id="btnManualMap">Use map instead</button>
+        <button type="button" class="primary" id="btnGeocodePlan">Look up PINs &amp; plan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="placeHint" class="place-hint hidden" aria-live="polite"></div>
+  <div id="planLoader" class="plan-loader hidden" aria-live="polite" aria-busy="true">
+    <div class="plan-loader-card">
+      <div class="plan-spinner" aria-hidden="true"></div>
+      <div class="plan-loader-title">Planning your meetup</div>
+      <div class="plan-loader-msg" id="planLoaderMsg">Finding optimal route for the meetup…</div>
+    </div>
+  </div>
 
   <div class="top-bar">
     <div class="top-main-row">
       <div class="title-card">
         <div class="title-eyebrow">💌 Meetup planner</div>
-        <h1 class="title-main">
-          <span class="her-name">Ishika</span>
-          &nbsp;↔&nbsp;
-          <span class="him-name">Arpit</span>
-        </h1>
-        <p class="title-sub">Pari Chowk ↔ Alipur · crow-flies km — traffic is rougher in real life (~1.4×).</p>
-        <div class="stats-row">
-          <div class="stat-chip her"><span class="slbl">👩 Ishika → mid</span><span class="sval" id="kmA">—</span></div>
-          <div class="stat-chip him"><span class="slbl">👨 Arpit → mid</span><span class="sval" id="kmB">—</span></div>
-          <div class="stat-chip total"><span class="slbl">Line</span><span class="sval" id="kmTot">—</span></div>
-        </div>
+        <h1 class="title-main" id="titleMain">…</h1>
+        <p class="title-sub" id="titleSub">Green dot = point that minimizes Σd + W·Σ(d−d̄)² (fairness‑weighted, crow‑flies). Spots list = lowest <strong>total</strong> km to each venue.</p>
+        <div class="stats-row" id="statsRow"></div>
       </div>
 
       <div class="fairness-card" id="fairnessCard">
-        <div class="fairness-context" id="fairnessContext">For: Geographic midpoint</div>
-        <div class="fairness-heading">⚖️ Who travels more to this place?</div>
-        <div class="fairness-bar-track">
-          <div class="seg-her" id="segHer" style="width:50%"></div>
-          <div class="seg-him" id="segHim" style="width:50%"></div>
-        </div>
-        <div class="fairness-labels">
-          <span class="fl-her" id="flHer">👩 Ishika —</span>
-          <span class="fl-him" id="flHim">👨 Arpit —</span>
-        </div>
+        <div class="fairness-context" id="fairnessContext">For: —</div>
+        <div class="fairness-heading">⚖️ Travel to this place</div>
+        <div class="fairness-bar-track" id="fairnessBarTrack"></div>
+        <div class="fairness-labels" id="fairnessLabels"></div>
         <div class="fairness-verdict" id="fairnessVerdict"></div>
       </div>
 
       <div class="filter-card">
         <div class="filter-heading">🗓️ Plan</div>
         <div class="filter-row" id="filterRow" role="group" aria-label="Filter by activity"></div>
+        <div class="radius-row">
+          <label for="radiusSlider">Meetup Radius</label>
+          <input id="radiusSlider" type="range" min="10" max="100" step="5" value="10" />
+          <span class="radius-val" id="radiusValue">10 km</span>
+        </div>
       </div>
     </div>
 
     <div class="top-controls">
-      <div class="legend-bar" aria-label="Legend: Ishika, Arpit, midpoint. Tap a map pin to compare travel.">
-        <span class="legend-item"><span class="ldot her" aria-hidden="true"></span>Her</span>
+      <div class="legend-bar" id="legendBar" aria-label="Map legend">
+        <span class="legend-item"><span class="ldot mid" aria-hidden="true"></span>Center</span>
         <span class="legend-sep" aria-hidden="true">·</span>
-        <span class="legend-item"><span class="ldot him" aria-hidden="true"></span>Him</span>
-        <span class="legend-sep" aria-hidden="true">·</span>
-        <span class="legend-item"><span class="ldot mid" aria-hidden="true"></span>Mid</span>
-        <span class="legend-sep" aria-hidden="true">·</span>
-        <span class="legend-hint">Tap a spot</span>
+        <span class="legend-hint">Tap a venue to compare</span>
       </div>
     </div>
   </div>
@@ -702,6 +1118,10 @@
     <div class="panel-header">
       <h2 id="panelTitle">Meet spots</h2>
       <div class="panel-header-btns">
+        <button class="panel-btn collapse" id="btnPanelToggle" type="button" aria-expanded="true" aria-label="Collapse meet spots panel" title="Collapse panel">
+          <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+        </button>
+        <button class="panel-btn group" id="btnGroup" type="button">Group</button>
         <button class="panel-btn share" id="btnShare" type="button">📋 Share</button>
         <button class="panel-btn fit" id="btnFit" type="button">Fit map</button>
       </div>
@@ -722,8 +1142,14 @@
   (function () {
     const R = 6371;
 
-    const A = { name: "Pari Chowk, Greater Noida", lat: 28.4631285, lng: 77.5080985 };
-    const B = { name: "Alipur, Delhi 110036",      lat: 28.7973118, lng: 77.1386670 };
+    const PERSON_COLORS = ["#f472b6", "#38bdf8", "#a78bfa", "#fbbf24", "#34d399", "#fb7185", "#2dd4bf", "#f97316"];
+
+    /** Penalty weight W in Cost = Σdᵢ + W·Σ(dᵢ − d̄)² (higher → more equal trip lengths). */
+    const MEETUP_FAIRNESS_WEIGHT = 15;
+    /** Keep recommendations near optimized meetup point. */
+    const DEFAULT_VENUE_RADIUS_KM = 10;
+    /** Time midpoint objective weight: max(t_i) + TIME_VAR_WEIGHT * variance(t_i), t_i in minutes. */
+    const TIME_VAR_WEIGHT = 1;
 
     const FILTERS = [
       { id: "all",    label: "All",    icon: "map" },
@@ -765,7 +1191,7 @@
         name: "DLF Mall of India, Noida",
         lat: 28.5674442, lng: 77.3211240,
         tag: "Premium mall · PVR Gold · rooftop dining",
-        why: "Leans toward Ishika's side (Noida) — premium experience. Go here if you're doing dinner + a film.",
+        why: "Leans toward the Noida side — premium experience. Great for dinner + a film.",
         cats: ["movies","malls"],
         vibe: "date", vibeLabel: "✨ Fancy date",
       },
@@ -789,11 +1215,12 @@
         name: "Shipra Mall, Indirapuram",
         lat: 28.6338240, lng: 77.3696585,
         tag: "Movies · food · slightly east",
-        why: "A bit closer to Ishika's side — good if Noida is the preference.",
+        why: "A bit east — good if Noida is the preference.",
         cats: ["movies","malls"],
         vibe: "fun", vibeLabel: "🎬 Movie day",
       },
     ];
+    let discoveredVenues = [];
 
     function toRad(d) { return d * Math.PI / 180; }
 
@@ -803,49 +1230,477 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    function mid(a, b) { return { lat: (a.lat+b.lat)/2, lng: (a.lng+b.lng)/2 }; }
     function mapsUrl(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 
-    // Drive time estimate: straight-line × 1.4 / 30 km/h city speed → hours → mins
     function driveMinutes(km) { return Math.round(km * 1.4 / 30 * 60); }
 
-    function verdictText(ka, kb) {
-      const delta = Math.abs(ka - kb);
-      const whoMore = ka > kb ? "Ishika" : "Arpit";
-      const whoLess = ka > kb ? "Arpit" : "Ishika";
-      if (delta < 1.5) return `🎯 Almost perfectly fair! Both of you travel roughly the same distance.`;
-      if (delta < 4)   return `😏 Pretty fair — <strong>${whoMore}</strong> edges it by ${delta.toFixed(1)} km. ${whoLess} owes a chai.`;
-      if (delta < 8)   return `🛣️ <strong>${whoMore}</strong> is making the bigger effort here — ${delta.toFixed(1)} km more. Worth acknowledging!`;
-      return `😂 This is basically <strong>${whoLess}</strong>'s backyard. ${whoMore} is doing <em>serious</em> work.`;
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
     }
 
+    function sum(arr) { return arr.reduce((a, b) => a + b, 0); }
+
+    /** dᵢ = haversine km from candidate (lat,lng) to person i; d̄ = mean(dᵢ). */
+    function meetupBreakdown(lat, lng, people, W) {
+      const dists = people.map(p => haversineKm(lat, lng, p.lat, p.lng));
+      const n = dists.length;
+      const sumD = sum(dists);
+      const dBar = n > 0 ? sumD / n : 0;
+      const varSum = dists.reduce((s, d) => s + (d - dBar) ** 2, 0);
+      const cost = sumD + W * varSum;
+      return { dists, sumD, dBar, varSum, cost };
+    }
+
+    function meetupCostAt(lat, lng, people, W) {
+      return meetupBreakdown(lat, lng, people, W).cost;
+    }
+
+    function meetupSearchBBox(people) {
+      let minLat = Math.min(...people.map(p => p.lat));
+      let maxLat = Math.max(...people.map(p => p.lat));
+      let minLng = Math.min(...people.map(p => p.lng));
+      let maxLng = Math.max(...people.map(p => p.lng));
+      const minPad = 0.035;
+      const spanLat = Math.max(maxLat - minLat, minPad);
+      const spanLng = Math.max(maxLng - minLng, minPad);
+      const padLat = spanLat * 0.38 + minPad;
+      const padLng = spanLng * 0.38 + minPad;
+      return {
+        minLat: minLat - padLat,
+        maxLat: maxLat + padLat,
+        minLng: minLng - padLng,
+        maxLng: maxLng + padLng
+      };
+    }
+
+    /** Grid search + local zoom to minimize Cost (no external solver; fine for N ≤ 8). */
+    function optimizeMeetupPoint(people, W) {
+      const box = meetupSearchBBox(people);
+      let minLat = box.minLat, maxLat = box.maxLat, minLng = box.minLng, maxLng = box.maxLng;
+      let bestLat = (minLat + maxLat) / 2;
+      let bestLng = (minLng + maxLng) / 2;
+      let bestCost = meetupCostAt(bestLat, bestLng, people, W);
+      const coarse = 52;
+      for (let i = 0; i <= coarse; i++) {
+        const lat = minLat + (maxLat - minLat) * (i / coarse);
+        for (let j = 0; j <= coarse; j++) {
+          const lng = minLng + (maxLng - minLng) * (j / coarse);
+          const c = meetupCostAt(lat, lng, people, W);
+          if (c < bestCost) { bestCost = c; bestLat = lat; bestLng = lng; }
+        }
+      }
+      let spanLat = (maxLat - minLat) / coarse * 5;
+      let spanLng = (maxLng - minLng) / coarse * 5;
+      const fine = 36;
+      for (let round = 0; round < 4; round++) {
+        const loLat = bestLat - spanLat, hiLat = bestLat + spanLat;
+        const loLng = bestLng - spanLng, hiLng = bestLng + spanLng;
+        for (let i = 0; i <= fine; i++) {
+          const lat = loLat + (hiLat - loLat) * (i / fine);
+          for (let j = 0; j <= fine; j++) {
+            const lng = loLng + (hiLng - loLng) * (j / fine);
+            const c = meetupCostAt(lat, lng, people, W);
+            if (c < bestCost) { bestCost = c; bestLat = lat; bestLng = lng; }
+          }
+        }
+        spanLat *= 0.32;
+        spanLng *= 0.32;
+      }
+      return { lat: bestLat, lng: bestLng };
+    }
+
+    function timeCandidateGrid(people, rows = 5, cols = 5) {
+      const box = meetupSearchBBox(people);
+      const cands = [];
+      for (let i = 0; i < rows; i++) {
+        const lat = box.minLat + (box.maxLat - box.minLat) * ((i + 0.5) / rows);
+        for (let j = 0; j < cols; j++) {
+          const lng = box.minLng + (box.maxLng - box.minLng) * ((j + 0.5) / cols);
+          cands.push({ lat, lng });
+        }
+      }
+      // Include distance-based fair point as candidate too.
+      cands.push({ lat: meetCenter.lat, lng: meetCenter.lng });
+      return cands;
+    }
+
+    async function osrmTableDurations(people, candidates) {
+      const coords = [
+        ...people.map(p => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`),
+        ...candidates.map(c => `${c.lng.toFixed(6)},${c.lat.toFixed(6)}`)
+      ].join(";");
+      const n = people.length;
+      const src = Array.from({ length: n }, (_, i) => i).join(";");
+      const dst = Array.from({ length: candidates.length }, (_, i) => n + i).join(";");
+      const url = `https://router.project-osrm.org/table/v1/driving/${coords}?sources=${src}&destinations=${dst}&annotations=duration`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("OSRM table request failed.");
+      const data = await res.json();
+      if (!data || !Array.isArray(data.durations)) throw new Error("OSRM returned invalid table.");
+      return data.durations; // seconds matrix [people][candidates]
+    }
+
+    function pickBestTimeCandidate(candidates, durationsSec) {
+      let bestIdx = -1;
+      let bestCost = Number.POSITIVE_INFINITY;
+      let bestTimesMin = [];
+      for (let j = 0; j < candidates.length; j++) {
+        const timesMin = durationsSec.map(row => {
+          const sec = row[j];
+          return Number.isFinite(sec) ? sec / 60 : Number.POSITIVE_INFINITY;
+        });
+        if (timesMin.some(t => !Number.isFinite(t))) continue;
+        const maxT = Math.max(...timesMin);
+        const mean = sum(timesMin) / timesMin.length;
+        const variance = timesMin.reduce((s, t) => s + (t - mean) ** 2, 0) / timesMin.length;
+        const cost = maxT + TIME_VAR_WEIGHT * variance;
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestIdx = j;
+          bestTimesMin = timesMin;
+        }
+      }
+      if (bestIdx < 0) return null;
+      return { point: candidates[bestIdx], timesMin: bestTimesMin, cost: bestCost };
+    }
+
+    async function computeTimeMidpoint(people) {
+      const candidates = timeCandidateGrid(people, 5, 5);
+      const durations = await osrmTableDurations(people, candidates);
+      return pickBestTimeCandidate(candidates, durations);
+    }
+
+    const PHOTON_DELAY_MS = 1100;
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function pickPhotonFeature(features, pinDigits) {
+      if (!features.length) return null;
+      const pin = String(pinDigits).trim();
+      const exact = features.find(f =>
+        f.properties && f.properties.osm_value === "postcode" && String(f.properties.name) === pin
+      );
+      if (exact) return exact;
+      const postcode = features.find(f => f.properties && f.properties.osm_value === "postcode");
+      if (postcode) return postcode;
+      return features[0];
+    }
+
+    /** India 6-digit PIN → lat/lng (Photon / OSM; ~1 req/s courtesy delay). */
+    async function geocodeIndianPincode(pincode) {
+      const digits = String(pincode).replace(/\D/g, "");
+      if (digits.length !== 6) throw new Error("Each PIN must be exactly 6 digits (India).");
+      const q = encodeURIComponent(digits + " India");
+      const res = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=5`);
+      if (!res.ok) throw new Error("Could not reach the lookup service. Try again or use the map.");
+      const data = await res.json();
+      const feat = pickPhotonFeature(data.features || [], digits);
+      if (!feat || !feat.geometry || !Array.isArray(feat.geometry.coordinates)) {
+        throw new Error(`No location found for PIN ${digits}. Check the code or use the map.`);
+      }
+      const [lng, lat] = feat.geometry.coordinates;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Invalid coordinates for that PIN.");
+      return { lat, lng, pincode: digits };
+    }
+
+    function classifyOsmPlace(tags) {
+      if (!tags) return null;
+      const amenity = tags.amenity || "";
+      const shop = tags.shop || "";
+      const leisure = tags.leisure || "";
+      const tourism = tags.tourism || "";
+
+      if (amenity === "cinema") return ["movies"];
+      if (shop === "mall" || shop === "shopping_centre") return ["malls"];
+      if (["cafe", "restaurant", "food_court", "ice_cream", "fast_food"].includes(amenity)) return ["cafes"];
+      if (["amusement_arcade", "bowling_alley", "water_park", "theme_park"].includes(leisure)) return ["fun"];
+      if (tourism === "attraction") return ["fun"];
+      return null;
+    }
+
+    function venueMetaFromCats(cats) {
+      if (cats.includes("movies") && cats.includes("malls")) return { vibe: "date", vibeLabel: "🎬 Date night", tag: "Cinema + shopping", why: "Popular mixed plan near your computed meetup zone." };
+      if (cats.includes("movies")) return { vibe: "fun", vibeLabel: "🎟️ Movie plan", tag: "Cinema", why: "Movie option close to your meetup area." };
+      if (cats.includes("malls")) return { vibe: "fun", vibeLabel: "🛍️ Mall plan", tag: "Shopping + food", why: "Mall option inside your meetup radius." };
+      if (cats.includes("cafes")) return { vibe: "chill", vibeLabel: "☕ Chill day", tag: "Cafe / dining", why: "Good low-key meetup option." };
+      return { vibe: "fun", vibeLabel: "🎉 Hangout", tag: "Activity", why: "General hangout option near your meetup area." };
+    }
+
+    function overpassQuery(lat, lng, radiusM) {
+      return `
+[out:json][timeout:30];
+(
+  nwr(around:${radiusM},${lat},${lng})[amenity=cinema];
+  nwr(around:${radiusM},${lat},${lng})[shop=mall];
+  nwr(around:${radiusM},${lat},${lng})[shop=shopping_centre];
+  nwr(around:${radiusM},${lat},${lng})[amenity=cafe];
+  nwr(around:${radiusM},${lat},${lng})[amenity=restaurant];
+  nwr(around:${radiusM},${lat},${lng})[amenity=food_court];
+  nwr(around:${radiusM},${lat},${lng})[amenity=ice_cream];
+  nwr(around:${radiusM},${lat},${lng})[amenity=fast_food];
+  nwr(around:${radiusM},${lat},${lng})[leisure=amusement_arcade];
+  nwr(around:${radiusM},${lat},${lng})[leisure=bowling_alley];
+  nwr(around:${radiusM},${lat},${lng})[leisure=water_park];
+  nwr(around:${radiusM},${lat},${lng})[leisure=theme_park];
+  nwr(around:${radiusM},${lat},${lng})[tourism=attraction];
+);
+out center;
+`;
+    }
+
+    async function fetchNearbyVenues(lat, lng, radiusKm) {
+      const radiusM = Math.max(1000, Math.round(radiusKm * 1000));
+      const query = overpassQuery(lat, lng, radiusM);
+      const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Could not fetch nearby meetup places.");
+      const data = await res.json();
+      const out = [];
+      const seen = new Set();
+      for (const el of (data.elements || [])) {
+        const tags = el.tags || {};
+        const cats = classifyOsmPlace(tags);
+        if (!cats) continue;
+        const point = (typeof el.lat === "number" && typeof el.lon === "number")
+          ? { lat: el.lat, lng: el.lon }
+          : (el.center && typeof el.center.lat === "number" && typeof el.center.lon === "number")
+            ? { lat: el.center.lat, lng: el.center.lon }
+            : null;
+        if (!point) continue;
+        const name = (tags.name || "").trim();
+        if (!name) continue;
+        const k = `${name.toLowerCase()}|${point.lat.toFixed(4)}|${point.lng.toFixed(4)}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const meta = venueMetaFromCats(cats);
+        out.push({
+          name,
+          lat: point.lat,
+          lng: point.lng,
+          tag: meta.tag,
+          why: meta.why,
+          cats,
+          vibe: meta.vibe,
+          vibeLabel: meta.vibeLabel
+        });
+      }
+      return out;
+    }
+
+    function verdictGroup(dists, names) {
+      const delta = Math.max(...dists) - Math.min(...dists);
+      const imax = dists.indexOf(Math.max(...dists));
+      const imin = dists.indexOf(Math.min(...dists));
+      if (dists.length < 2) return "";
+      if (delta < 1.5) return "🎯 Pretty balanced — everyone’s in the same ballpark.";
+      if (delta < 5)   return `😏 <strong>${escapeHtml(names[imax])}</strong> has a bit farther to go than <strong>${escapeHtml(names[imin])}</strong> (${delta.toFixed(1)} km spread).`;
+      return `🛣️ <strong>${escapeHtml(names[imax])}</strong> is covering the most ground (${delta.toFixed(1)} km more than the shortest trip).`;
+    }
+
+    function popupFairLine(dists, names) {
+      const delta = Math.max(...dists) - Math.min(...dists);
+      const imax = dists.indexOf(Math.max(...dists));
+      if (delta < 1.5) return `<div class="popup-verdict">🎯 Balanced for the group</div>`;
+      if (delta < 5)   return `<div class="popup-verdict">😏 ${escapeHtml(names[imax])} has the longest leg (${delta.toFixed(1)} km spread)</div>`;
+      return `<div class="popup-verdict">🛣️ ${escapeHtml(names[imax])} travels the most</div>`;
+    }
+
+    let people = [];
+    let meetCenter = null;
+    let timeCenter = null;
+    let activeMidMode = "both"; // "dist" | "time" | "both"
+    let modeSwitchBusy = false;
+    let markerMid = null;
+    let markerTimeMid = null;
+    let radiusCircleDist = null;
+    let radiusCircleTime = null;
+    let spokesLayer = null;
+    let vMarkers = [];
     let selectedVenueRow = null;
+    let placingIndex = 0;
+    let planLoaderTimer = null;
+    let venueRadiusKm = DEFAULT_VENUE_RADIUS_KM;
+    let radiusFetchTimer = null;
+    const LIST_PAGE_SIZE = 10;
+    let listVisibleLimit = LIST_PAGE_SIZE;
+    let lastListScopeKey = "";
+    let mobilePanelInitDone = false;
+    const PLAN_MESSAGES = [
+      "Finding optimal route for the meetup…",
+      "Balancing travel time for everyone…",
+      "Finding best date places near midpoint…",
+      "Shortlisting cafes, malls and fun spots…"
+    ];
 
-    function setTravelComparison(ka, kb, spotLabel) {
-      const total = ka + kb;
-      const pctHer = total > 0 ? Math.round((ka / total) * 100) : 50;
-      const pctHim = 100 - pctHer;
-      document.getElementById("segHer").style.width = pctHer + "%";
-      document.getElementById("segHim").style.width = pctHim + "%";
-      document.getElementById("flHer").textContent = `👩 Ishika · ${ka.toFixed(1)} km`;
-      document.getElementById("flHim").textContent = `👨 Arpit · ${kb.toFixed(1)} km`;
-      document.getElementById("fairnessVerdict").innerHTML = verdictText(ka, kb);
+    function setFairnessUI(spotLabel, dists) {
+      const names = people.map(p => p.name);
+      const totalKm = sum(dists);
       document.getElementById("fairnessContext").textContent = "For: " + spotLabel;
+      const track = document.getElementById("fairnessBarTrack");
+      track.innerHTML = "";
+      dists.forEach((d, i) => {
+        const seg = document.createElement("div");
+        seg.className = "fairness-seg";
+        seg.style.width = totalKm > 0 ? Math.max(4, (d / totalKm) * 100) + "%" : (100 / dists.length) + "%";
+        seg.style.background = PERSON_COLORS[i % PERSON_COLORS.length];
+        track.appendChild(seg);
+      });
+      const labels = document.getElementById("fairnessLabels");
+      labels.innerHTML = dists.map((d, i) =>
+        `<span class="fl-person" style="color:${PERSON_COLORS[i % PERSON_COLORS.length]}">${escapeHtml(names[i])} · ${d.toFixed(1)} km</span>`
+      ).join("");
+      document.getElementById("fairnessVerdict").innerHTML = verdictGroup(dists, names);
     }
 
-    // ── Compute distances ──
-    const M = mid(A, B);
-    const dAB = haversineKm(A.lat, A.lng, B.lat, B.lng);
-    const dAM = haversineKm(A.lat, A.lng, M.lat, M.lng);
-    const dBM = haversineKm(B.lat, B.lng, M.lat, M.lng);
+    function startPlanLoader(initialMsg) {
+      const loader = document.getElementById("planLoader");
+      const msg = document.getElementById("planLoaderMsg");
+      if (!loader || !msg) return;
+      loader.classList.remove("hidden");
+      let idx = 0;
+      msg.textContent = initialMsg || PLAN_MESSAGES[0];
+      if (planLoaderTimer) clearInterval(planLoaderTimer);
+      planLoaderTimer = setInterval(() => {
+        idx = (idx + 1) % PLAN_MESSAGES.length;
+        msg.textContent = PLAN_MESSAGES[idx];
+      }, 1500);
+    }
 
-    document.getElementById("kmA").textContent   = dAM.toFixed(1) + " km";
-    document.getElementById("kmB").textContent   = dBM.toFixed(1) + " km";
-    document.getElementById("kmTot").textContent = dAB.toFixed(1) + " km";
+    function setPlanLoaderMessage(text) {
+      const msg = document.getElementById("planLoaderMsg");
+      if (msg) msg.textContent = text;
+    }
+
+    function stopPlanLoader() {
+      if (planLoaderTimer) {
+        clearInterval(planLoaderTimer);
+        planLoaderTimer = null;
+      }
+      const loader = document.getElementById("planLoader");
+      if (loader) loader.classList.add("hidden");
+    }
+
+    function showMidRadius(mode, previewRadiusKm) {
+      const useKm = Number.isFinite(previewRadiusKm) ? previewRadiusKm : venueRadiusKm;
+      const radiusM = useKm * 1000;
+      if (mode === "dist" || mode === "both") {
+        if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
+        if (meetCenter) {
+          radiusCircleDist = L.circle([meetCenter.lat, meetCenter.lng], {
+            radius: radiusM,
+            color: "#34d399",
+            weight: 2,
+            opacity: 0.7,
+            fillColor: "#34d399",
+            fillOpacity: 0.12
+          }).addTo(map);
+        }
+      }
+      if (mode === "time" || mode === "both") {
+        if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
+        if (timeCenter) {
+          radiusCircleTime = L.circle([timeCenter.lat, timeCenter.lng], {
+            radius: radiusM,
+            color: "#3b82f6",
+            weight: 2,
+            opacity: 0.75,
+            fillColor: "#3b82f6",
+            fillOpacity: 0.12
+          }).addTo(map);
+        }
+      }
+      if (mode === "dist") {
+        if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
+      }
+      if (mode === "time") {
+        if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
+      }
+    }
+
+    function distsToVenue(v) {
+      return people.map(p => haversineKm(p.lat, p.lng, v.lat, v.lng));
+    }
+
+    function buildMidPopup(dMid) {
+      const names = people.map(p => p.name);
+      const lines = dMid.map((d, i) =>
+        `<span style="color:${PERSON_COLORS[i % PERSON_COLORS.length]}">${escapeHtml(names[i])}: ${d.toFixed(1)} km</span>`
+      ).join("<br>");
+      const br = meetupBreakdown(meetCenter.lat, meetCenter.lng, people, MEETUP_FAIRNESS_WEIGHT);
+      const W = MEETUP_FAIRNESS_WEIGHT;
+      return `
+        <div class="popup-title">📍 Fair meetup point</div>
+        <div class="popup-sub">Grid‑searched minimum of <strong>Cost = Σdᵢ + ${W}·Σ(dᵢ − d̄)²</strong> (km, haversine). d̄ is the average of all dᵢ; the second term penalizes unequal trip lengths. Here Σdᵢ = ${br.sumD.toFixed(1)} km, Σ(dᵢ−d̄)² = ${br.varSum.toFixed(2)}. Venue cards still rank by raw <strong>total</strong> km to each place.</div>
+        <div class="popup-dist">${lines}</div>
+        <a class="popup-link" href="${mapsUrl(meetCenter.lat, meetCenter.lng)}" target="_blank" rel="noopener">
+          <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`;
+    }
+
+    function buildTimeMidPopup(timesMin) {
+      const names = people.map(p => p.name);
+      const lines = timesMin.map((t, i) =>
+        `<span style="color:${PERSON_COLORS[i % PERSON_COLORS.length]}">${escapeHtml(names[i])}: ${Math.round(t)} min</span>`
+      ).join("<br>");
+      const maxT = Math.max(...timesMin);
+      const mean = sum(timesMin) / timesMin.length;
+      const variance = timesMin.reduce((s, t) => s + (t - mean) ** 2, 0) / timesMin.length;
+      return `
+        <div class="popup-title">⏱️ Time-based midpoint</div>
+        <div class="popup-sub">Estimated by OSRM driving times over grid candidates with <strong>Cost_time = max(tᵢ) + ${TIME_VAR_WEIGHT}·Variance(tᵢ)</strong>. This minimizes the worst commute while keeping commute times balanced.</div>
+        <div class="popup-dist">${lines}</div>
+        <div class="popup-dist" style="color:#94a3b8">max(tᵢ): ${Math.round(maxT)} min · variance: ${variance.toFixed(1)}</div>
+        <a class="popup-link" href="${mapsUrl(timeCenter.lat, timeCenter.lng)}" target="_blank" rel="noopener">
+          <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`;
+    }
+
+    function refreshTitleStats() {
+      const names = people.map(p => p.name);
+      document.getElementById("titleMain").textContent = names.join(" · ");
+      const dists = people.map(p => haversineKm(p.lat, p.lng, meetCenter.lat, meetCenter.lng));
+      const sumToCenter = sum(dists);
+      const statsRow = document.getElementById("statsRow");
+      statsRow.innerHTML = people.map((p, i) =>
+        `<div class="stat-chip person" style="--person-c:${PERSON_COLORS[i % PERSON_COLORS.length]}">
+          <span class="slbl" style="color:var(--person-c)">${escapeHtml(p.name)} → center</span>
+          <span class="sval" style="color:var(--person-c)">${dists[i].toFixed(1)} km</span>
+        </div>`
+      ).join("") +
+        `<div class="stat-chip total"><span class="slbl">Total to center</span><span class="sval">${sumToCenter.toFixed(1)} km</span></div>`;
+    }
+
+    function refreshLegend() {
+      const el = document.getElementById("legendBar");
+      const parts = people.map((p, i) =>
+        `<span class="legend-item"><span class="ldot" style="background:${PERSON_COLORS[i % PERSON_COLORS.length]}" aria-hidden="true"></span>${escapeHtml(p.name)}</span>`
+      );
+      const distActive = activeMidMode === "dist" ? " active" : "";
+      const timeActive = activeMidMode === "time" ? " active" : "";
+      const bothActive = activeMidMode === "both" ? " active" : "";
+      const timeBtn = timeCenter
+        ? `<button type="button" class="legend-mode-btn${timeActive}" id="midModeTime">Time-mid</button>`
+        : "";
+      const busy = modeSwitchBusy ? "" : " hidden";
+      el.innerHTML = parts.join('<span class="legend-sep" aria-hidden="true">·</span>') +
+        '<span class="legend-sep" aria-hidden="true">·</span><span class="legend-item"><span class="ldot mid" aria-hidden="true"></span></span>' +
+        `<button type="button" class="legend-mode-btn${distActive}" id="midModeDist">Dist-mid</button>` +
+        (timeBtn ? `<span class="legend-sep" aria-hidden="true">·</span><span class="legend-item"><span class="ldot tmid" aria-hidden="true"></span></span>${timeBtn}` : "") +
+        '<span class="legend-sep" aria-hidden="true">·</span>' +
+        `<button type="button" class="legend-mode-btn${bothActive}" id="midModeBoth">Both</button>` +
+        `<span class="legend-sep" aria-hidden="true">·</span><span class="legend-busy${busy}" id="legendBusy">Updating…</span>` +
+        '<span class="legend-sep" aria-hidden="true">·</span><span class="legend-hint">Tap Dist/Time/Both</span>';
+
+      const bDist = document.getElementById("midModeDist");
+      const bTime = document.getElementById("midModeTime");
+      const bBoth = document.getElementById("midModeBoth");
+      if (bDist) bDist.addEventListener("click", () => setMidMode("dist"));
+      if (bTime) bTime.addEventListener("click", () => setMidMode("time"));
+      if (bBoth) bBoth.addEventListener("click", () => setMidMode("both"));
+    }
 
     // ── MAP ──
     const map = L.map("map", { zoomControl: true, scrollWheelZoom: true })
-                  .setView([M.lat, M.lng], 10);
+                  .setView([28.55, 77.28], 10);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "", maxZoom: 19
@@ -853,14 +1708,14 @@
 
     L.control.scale({ imperial: false, metric: true }).addTo(map);
 
-    // ── Markers ──
-    function personIcon(emoji, ring) {
+    function personNumIcon(label, ring) {
+      const txt = (label || "?").toString().trim().slice(0, 1).toUpperCase();
       return L.divIcon({
         className: "leaflet-div-icon",
-        html: `<div style="width:42px;height:42px;display:flex;align-items:center;justify-content:center;
-               background:rgba(8,12,20,0.88);border:3px solid ${ring};border-radius:50%;
-               box-shadow:0 3px 18px rgba(0,0,0,.6);font-size:22px" aria-hidden="true">${emoji}</div>`,
-        iconSize: [42,42], iconAnchor: [21,21]
+        html: `<div style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+               background:rgba(8,12,20,0.92);border:3px solid ${ring};border-radius:50%;
+               box-shadow:0 3px 18px rgba(0,0,0,.6);font-size:15px;font-weight:800;color:#fff" aria-hidden="true">${txt}</div>`,
+        iconSize: [38,38], iconAnchor: [19,19]
       });
     }
 
@@ -868,6 +1723,11 @@
       className: "leaflet-div-icon",
       html: `<div class="mid-pulse-dot"></div>`,
       iconSize: [18,18], iconAnchor: [9,9]
+    });
+    const timeMidIcon = L.divIcon({
+      className: "leaflet-div-icon",
+      html: `<div style="width:16px;height:16px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 0 0 0 rgba(249,115,22,0.5);animation:midpulse 2s ease-out infinite"></div>`,
+      iconSize: [16,16], iconAnchor: [8,8]
     });
 
     const VPIN = {
@@ -897,85 +1757,224 @@
       });
     }
 
-    function popupFor(v, ka, kb) {
-      const delta  = Math.abs(ka - kb);
-      const whoMore = ka > kb ? "Ishika" : "Arpit";
-      let fairLine = "";
-      if (delta < 1.5) fairLine = `<div class="popup-verdict">🎯 Almost perfectly fair!</div>`;
-      else if (delta < 5) fairLine = `<div class="popup-verdict">😏 ${whoMore} travels ${delta.toFixed(1)} km more</div>`;
-      else fairLine = `<div class="popup-verdict">🛣️ ${whoMore} is doing the heavy lifting here!</div>`;
+    function popupFor(v, dists, centerKmDist, centerKmTime) {
+      const names = people.map(p => p.name);
+      const sumKm = sum(dists);
+      const lines = dists.map((d, i) =>
+        `<span style="color:${PERSON_COLORS[i % PERSON_COLORS.length]}">${escapeHtml(names[i])}: ${d.toFixed(1)} km (~${driveMinutes(d)} min)</span>`
+      ).join("<br>");
 
       const catsLine = (v.cats||[]).map(c => CAT_LABELS[c]||c).join(" · ");
       return `
-        <div class="popup-title">${v.name}</div>
-        <div class="popup-sub">${catsLine}<br>${v.tag}<br><em style="color:#64748b">${v.why}</em></div>
-        <div class="popup-dist">
-          <span class="ca">👩 Ishika: ${ka.toFixed(1)} km (~${driveMinutes(ka)} min)</span><br>
-          <span class="cb">👨 Arpit: ${kb.toFixed(1)} km (~${driveMinutes(kb)} min)</span>
-        </div>
-        ${fairLine}
+        <div class="popup-title">${escapeHtml(v.name)}</div>
+        <div class="popup-sub">${catsLine}<br>${escapeHtml(v.tag)}<br><em style="color:#64748b">${escapeHtml(v.why)}</em></div>
+        <div class="popup-dist">${lines}</div>
+        <div class="popup-dist" style="font-weight:700;color:#94a3b8;margin-top:0.25rem">Total: ${sumKm.toFixed(1)} km</div>
+        <div class="popup-dist" style="color:#94a3b8">From Dist-mid: ${centerKmDist.toFixed(1)} km${Number.isFinite(centerKmTime) ? ` · From Time-mid: ${centerKmTime.toFixed(1)} km` : ""}</div>
+        ${popupFairLine(dists, names)}
         <a class="popup-link" href="${mapsUrl(v.lat, v.lng)}" target="_blank" rel="noopener">
           <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps
         </a>`;
     }
 
-    // Place markers
-    const markerHer = L.marker([A.lat, A.lng], { icon: personIcon("👩","#f472b6") }).addTo(map)
-      .bindPopup(`<div class="popup-title">👩 Ishika — Pari Chowk</div>
-        <div class="popup-sub"><strong>Greater Noida</strong><br>${A.name}</div>
-        <a class="popup-link" href="${mapsUrl(A.lat,A.lng)}" target="_blank" rel="noopener">
-          <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`);
-    markerHer.on("click", () => {
-      selectedVenueRow = null;
-      setTravelComparison(dAM, dBM, "Geographic midpoint");
-    });
+    function syncRadiusUi(previewKm) {
+      const s = document.getElementById("radiusSlider");
+      const v = document.getElementById("radiusValue");
+      const useKm = Number.isFinite(previewKm) ? previewKm : venueRadiusKm;
+      if (s && s.value !== String(useKm)) s.value = String(useKm);
+      if (v) v.textContent = `${useKm} km`;
+    }
 
-    const markerHim = L.marker([B.lat, B.lng], { icon: personIcon("👨","#38bdf8") }).addTo(map)
-      .bindPopup(`<div class="popup-title">👨 Arpit — Alipur, Delhi</div>
-        <div class="popup-sub"><strong>North Delhi · 110036</strong><br>${B.name}</div>
-        <a class="popup-link" href="${mapsUrl(B.lat,B.lng)}" target="_blank" rel="noopener">
-          <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`);
-    markerHim.on("click", () => {
-      selectedVenueRow = null;
-      setTravelComparison(dAM, dBM, "Geographic midpoint");
-    });
+    function clearVenueMarkers() {
+      vMarkers.forEach(r => { if (map.hasLayer(r.marker)) map.removeLayer(r.marker); });
+      vMarkers = [];
+    }
 
-    const markerMid = L.marker([M.lat, M.lng], { icon: midIcon }).addTo(map)
-      .bindPopup(`<div class="popup-title">📍 Geographic midpoint</div>
-        <div class="popup-sub">The exact halfway point. Best meet spots are in the Preet Vihar – Noida Sector 18 band.</div>
-        <div class="popup-dist">
-          <span class="ca">👩 Ishika: ${dAM.toFixed(1)} km</span><br>
-          <span class="cb">👨 Arpit: ${dBM.toFixed(1)} km</span>
-        </div>
-        <a class="popup-link" href="${mapsUrl(M.lat,M.lng)}" target="_blank" rel="noopener">
-          <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`);
-    markerMid.on("click", () => {
-      selectedVenueRow = null;
-      setTravelComparison(dAM, dBM, "Geographic midpoint");
-    });
+    async function refreshDiscoveredVenues() {
+      if (!meetCenter) return;
+      document.getElementById("panelTitle").textContent = `Finding places within ${venueRadiusKm} km...`;
+      try {
+        const fromDist = await fetchNearbyVenues(meetCenter.lat, meetCenter.lng, venueRadiusKm);
+        let combined = fromDist.slice();
+        if (timeCenter) {
+          const fromTime = await fetchNearbyVenues(timeCenter.lat, timeCenter.lng, venueRadiusKm);
+          const seen = new Set(combined.map(v => `${v.name.toLowerCase()}|${v.lat.toFixed(4)}|${v.lng.toFixed(4)}`));
+          fromTime.forEach(v => {
+            const key = `${v.name.toLowerCase()}|${v.lat.toFixed(4)}|${v.lng.toFixed(4)}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              combined.push(v);
+            }
+          });
+        }
+        discoveredVenues = combined;
+      } catch (e) {
+        discoveredVenues = [];
+        showToast("Could not fetch places right now. Try again.");
+      }
 
-    L.polyline([[A.lat,A.lng],[B.lat,B.lng]], {
-      color:"#475569", weight:3, opacity:0.7, dashArray:"10 8"
-    }).addTo(map);
-
-    // ── Venue markers ──
-    const vMarkers = venues.map(v => {
-      const ka = haversineKm(A.lat,A.lng,v.lat,v.lng);
-      const kb = haversineKm(B.lat,B.lng,v.lat,v.lng);
-      const mk = L.marker([v.lat,v.lng], { icon: venueIcon(v) })
-                   .bindPopup(popupFor(v, ka, kb));
-      const row = { marker: mk, v, ka, kb };
-      mk.on("click", () => {
-        selectedVenueRow = row;
-        setTravelComparison(ka, kb, v.name);
+      clearVenueMarkers();
+      vMarkers = discoveredVenues.map(v => {
+        const dists = distsToVenue(v);
+        const sumKm = sum(dists);
+        const centerKmDist = haversineKm(meetCenter.lat, meetCenter.lng, v.lat, v.lng);
+        const centerKmTime = timeCenter ? haversineKm(timeCenter.lat, timeCenter.lng, v.lat, v.lng) : Number.POSITIVE_INFINITY;
+        const mk = L.marker([v.lat, v.lng], { icon: venueIcon(v) }).addTo(map);
+        const row = { marker: mk, v, dists, sumKm, centerKmDist, centerKmTime };
+        mk.bindPopup(popupFor(v, dists, centerKmDist, centerKmTime));
+        mk.on("click", () => {
+          selectedVenueRow = row;
+          setFairnessUI(v.name, dists);
+        });
+        return row;
       });
-      return row;
-    });
+    }
 
-    // ── Full bounds ──
-    const allBounds = L.latLngBounds([[A.lat,A.lng],[B.lat,B.lng]]);
-    venues.forEach(v => allBounds.extend([v.lat,v.lng]));
-    allBounds.extend([M.lat, M.lng]);
+    async function completeSetup() {
+      startPlanLoader("Finding optimal route for the meetup…");
+      try {
+      meetCenter = optimizeMeetupPoint(people, MEETUP_FAIRNESS_WEIGHT);
+      timeCenter = null;
+
+      spokesLayer = L.layerGroup().addTo(map);
+      people.forEach(p => {
+        spokesLayer.addLayer(L.polyline([[p.lat, p.lng], [meetCenter.lat, meetCenter.lng]], {
+          color: "#475569", weight: 2, opacity: 0.55, dashArray: "8 6"
+        }));
+      });
+
+      const dMid = people.map(p => haversineKm(p.lat, p.lng, meetCenter.lat, meetCenter.lng));
+
+      markerMid = L.marker([meetCenter.lat, meetCenter.lng], { icon: midIcon }).addTo(map);
+      markerMid.bindPopup(buildMidPopup(dMid));
+      markerMid.on("click", () => {
+        selectedVenueRow = null;
+        showMidRadius("dist");
+        void setMidMode("dist");
+        setFairnessUI("Fair meet point (Σd + W·variance)", dMid);
+      });
+
+      try {
+        setPlanLoaderMessage("Estimating commute-time midpoint…");
+        const tmid = await computeTimeMidpoint(people);
+        if (tmid && tmid.point) {
+          timeCenter = { lat: tmid.point.lat, lng: tmid.point.lng };
+          markerTimeMid = L.marker([timeCenter.lat, timeCenter.lng], { icon: timeMidIcon }).addTo(map);
+          markerTimeMid.bindPopup(buildTimeMidPopup(tmid.timesMin));
+          markerTimeMid.on("click", () => {
+            selectedVenueRow = null;
+            showMidRadius("time");
+            void setMidMode("time");
+            const approxKm = people.map(p => haversineKm(p.lat, p.lng, timeCenter.lat, timeCenter.lng));
+            setFairnessUI("Time-based midpoint (OSRM)", approxKm);
+          });
+        }
+      } catch (e) {
+        timeCenter = null;
+        markerTimeMid = null;
+        showToast("Time midpoint unavailable right now (routing API).");
+      }
+
+      people.forEach((p, i) => {
+        if (!p.marker) {
+          const col = PERSON_COLORS[i % PERSON_COLORS.length];
+          p.marker = L.marker([p.lat, p.lng], { icon: personNumIcon(p.name, col) }).addTo(map);
+        }
+        const pinLine = p.pincode
+          ? `<div class="popup-sub">PIN ${escapeHtml(p.pincode)}</div>`
+          : `<div class="popup-sub">Starting point ${i + 1}</div>`;
+        p.marker.bindPopup(`<div class="popup-title">${escapeHtml(p.name)}</div>
+          ${pinLine}
+          <a class="popup-link" href="${mapsUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open in Maps</a>`);
+        p.marker.on("click", () => {
+          selectedVenueRow = null;
+          setFairnessUI("Fair meet point (Σd + W·variance)", dMid);
+        });
+      });
+
+      refreshTitleStats();
+      activeMidMode = "both";
+      refreshLegend();
+      showMidRadius("both");
+
+      setPlanLoaderMessage("Finding best date places near midpoint…");
+      await refreshDiscoveredVenues();
+
+      document.getElementById("setupOverlay").classList.add("hidden");
+      document.getElementById("placeHint").classList.add("hidden");
+      document.body.classList.add("setup-done");
+
+      applyFilter();
+      const b = L.latLngBounds(people.map(p => [p.lat, p.lng]));
+      b.extend([meetCenter.lat, meetCenter.lng]);
+      if (timeCenter) b.extend([timeCenter.lat, timeCenter.lng]);
+      discoveredVenues.forEach(v => b.extend([v.lat, v.lng]));
+      map.fitBounds(b, { padding: [55, 55], maxZoom: 12 });
+      } finally {
+        stopPlanLoader();
+      }
+    }
+
+    function onPlaceClick(e) {
+      if (placingIndex >= people.length) return;
+      const p = people[placingIndex];
+      p.lat = e.latlng.lat;
+      p.lng = e.latlng.lng;
+      const col = PERSON_COLORS[placingIndex % PERSON_COLORS.length];
+      p.marker = L.marker([p.lat, p.lng], { icon: personNumIcon(p.name, col) }).addTo(map);
+      placingIndex += 1;
+      if (placingIndex < people.length) {
+        const hint = document.getElementById("placeHint");
+        hint.innerHTML = `Tap map for <span class="ph-name">${escapeHtml(people[placingIndex].name)}</span> <span style="opacity:.75">(${placingIndex + 1} of ${people.length})</span>`;
+      } else {
+        map.off("click", onPlaceClick);
+        void completeSetup().catch(() => {
+          showToast("Could not finish planning. Please try again.");
+        });
+      }
+    }
+
+    function resetPlanner() {
+      document.body.classList.remove("setup-done");
+      map.off("click", onPlaceClick);
+      people.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
+      people = [];
+      if (markerMid) { map.removeLayer(markerMid); markerMid = null; }
+      if (markerTimeMid) { map.removeLayer(markerTimeMid); markerTimeMid = null; }
+      if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
+      if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
+      if (spokesLayer) { map.removeLayer(spokesLayer); spokesLayer = null; }
+      vMarkers.forEach(r => { if (map.hasLayer(r.marker)) map.removeLayer(r.marker); });
+      vMarkers = [];
+      selectedVenueRow = null;
+      meetCenter = null;
+      timeCenter = null;
+      activeMidMode = "both";
+      listVisibleLimit = LIST_PAGE_SIZE;
+      lastListScopeKey = "";
+      syncRadiusUi();
+      placingIndex = 0;
+      document.getElementById("statsRow").innerHTML = "";
+      document.getElementById("fairnessBarTrack").innerHTML = "";
+      document.getElementById("fairnessLabels").innerHTML = "";
+      document.getElementById("fairnessVerdict").textContent = "";
+      document.getElementById("fairnessContext").textContent = "For: —";
+      document.getElementById("titleMain").textContent = "…";
+      document.getElementById("legendBar").innerHTML =
+        '<span class="legend-item"><span class="ldot mid" aria-hidden="true"></span>Dist-mid</span>' +
+        '<span class="legend-sep" aria-hidden="true">·</span>' +
+        '<span class="legend-hint">Tap a venue to compare</span>';
+      document.getElementById("setupStepNames").classList.add("hidden");
+      document.getElementById("setupStepCount").classList.remove("hidden");
+      document.getElementById("setupOverlay").classList.remove("hidden");
+      document.getElementById("placeHint").classList.add("hidden");
+      const geoErr = document.getElementById("setupGeocodeError");
+      const geoSt = document.getElementById("setupGeocodeStatus");
+      if (geoErr) { geoErr.textContent = ""; geoErr.classList.add("hidden"); }
+      if (geoSt) { geoSt.textContent = ""; geoSt.classList.add("hidden"); }
+      document.getElementById("panelTitle").textContent = "Meet spots";
+      document.getElementById("placeList").innerHTML = "";
+    }
 
     // ── Filter state ──
     let activeFilter = "all";
@@ -984,26 +1983,87 @@
       return activeFilter === "all" || (v.cats||[]).includes(activeFilter);
     }
 
+    function withinVenueRadius(row) {
+      if (activeMidMode === "dist") return row.centerKmDist >= 0 && row.centerKmDist <= venueRadiusKm;
+      if (activeMidMode === "time") return Number.isFinite(row.centerKmTime) && row.centerKmTime >= 0 && row.centerKmTime <= venueRadiusKm;
+      const inDist = row.centerKmDist >= 0 && row.centerKmDist <= venueRadiusKm;
+      const inTime = Number.isFinite(row.centerKmTime) && row.centerKmTime >= 0 && row.centerKmTime <= venueRadiusKm;
+      return inDist || inTime;
+    }
+
+    function matchesRow(row) {
+      return matches(row.v) && withinVenueRadius(row);
+    }
+
+    function midModeLabel() {
+      if (activeMidMode === "dist") return "Dist-mid";
+      if (activeMidMode === "time") return "Time-mid";
+      return "Dist-mid or Time-mid";
+    }
+
+    async function setMidMode(mode) {
+      if (mode === "time" && !timeCenter) {
+        showToast("Time-mid is unavailable for this setup.");
+        return;
+      }
+      if (mode === activeMidMode && !modeSwitchBusy) return;
+      startPlanLoader(`Switching to ${mode === "dist" ? "Dist-mid" : mode === "time" ? "Time-mid" : "Both"} view…`);
+      modeSwitchBusy = true;
+      refreshLegend();
+      await sleep(80);
+      activeMidMode = mode;
+      applyFilter();
+      showMidRadius(mode);
+      await sleep(120);
+      modeSwitchBusy = false;
+      refreshLegend();
+      stopPlanLoader();
+    }
+
+    async function setVenueRadius(nextKm) {
+      const km = Math.max(10, Math.min(100, nextKm));
+      if (km === venueRadiusKm) {
+        syncRadiusUi();
+        return;
+      }
+      venueRadiusKm = km;
+      listVisibleLimit = LIST_PAGE_SIZE;
+      syncRadiusUi();
+      showMidRadius(activeMidMode);
+      if (!document.body.classList.contains("setup-done")) return;
+      startPlanLoader(`Updating meetup points within ${venueRadiusKm} km…`);
+      try {
+        await refreshDiscoveredVenues();
+        applyFilter();
+      } finally {
+        stopPlanLoader();
+      }
+    }
+
     // ── Rebuild panel list ──
-    function rebuildList(visible) {
+    function rebuildList(sortedRows) {
       const list = document.getElementById("placeList");
       list.innerHTML = "";
 
-      if (!visible.length) {
-        list.innerHTML = `<p class="empty-msg">Nothing here yet — try <strong>All</strong> or <strong>Malls</strong> 👀</p>`;
+      if (!sortedRows.length) {
+        list.innerHTML = `<p class="empty-msg">No places found within <strong>${venueRadiusKm} km</strong> of <strong>${midModeLabel()}</strong> for this filter.</p>`;
         return;
       }
 
-      const sorted = visible.slice().sort((a,b) => Math.abs(a.ka-a.kb) - Math.abs(b.ka-b.kb));
+      const names = people.map(p => p.name);
+      const shown = sortedRows.slice(0, listVisibleLimit);
 
-      sorted.forEach((row, i) => {
-        const {v,ka,kb} = row;
-        const delta = Math.abs(ka-kb);
-        const whoMore = ka>kb ? "Ishika" : "Arpit";
-        let fairMicro = "";
-        if (delta < 1.5) fairMicro = `🎯 Almost perfectly fair!`;
-        else if (delta < 5) fairMicro = `😏 ${whoMore} travels ${delta.toFixed(1)} km more`;
-        else fairMicro = `🛣️ ${whoMore} is doing the heavy lifting (${delta.toFixed(1)} km extra)`;
+      shown.forEach((row, i) => {
+        const { v, dists, sumKm, centerKmDist, centerKmTime } = row;
+        const modeKm = activeMidMode === "time" ? centerKmTime : centerKmDist;
+        const modeLabel = activeMidMode === "time" ? "time-mid" : "dist-mid";
+        const delta = Math.max(...dists) - Math.min(...dists);
+        const imax = dists.indexOf(Math.max(...dists));
+        let fairMicro = delta < 1.5 ? "🎯 Balanced trips" : `🛣️ Longest: ${escapeHtml(names[imax])} (${delta.toFixed(1)} km spread)`;
+        const distRows = dists.map((d, j) =>
+          `<span style="color:${PERSON_COLORS[j % PERSON_COLORS.length]}">${escapeHtml(names[j])}: ${d.toFixed(1)} km</span>`
+        ).join("");
+        const roughMins = dists.reduce((s, d) => s + driveMinutes(d), 0);
 
         const catsHtml = (v.cats||[]).map(c =>
           `<span class="cat-pill"><span class="material-symbols-outlined" aria-hidden="true">${CAT_ICONS[c]||'place'}</span>${CAT_LABELS[c]||c}</span>`
@@ -1014,16 +2074,15 @@
         card.innerHTML = `
           <div class="cat-tags">${catsHtml}</div>
           <div class="venue-top">
-            <h3>${i+1}. ${v.name}</h3>
+            <h3>${i+1}. ${escapeHtml(v.name)}</h3>
             <span class="vibe-badge ${v.vibe}">${v.vibeLabel}</span>
           </div>
-          <p class="venue-meta">${v.tag}</p>
+          <p class="venue-meta">${escapeHtml(v.tag)}</p>
           <div class="venue-dist">
-            <span class="vd-her">👩 Ishika ${ka.toFixed(1)} km</span>
-            <span class="vd-him">👨 Arpit ${kb.toFixed(1)} km</span>
-            <span class="vd-delta">Δ ${delta.toFixed(1)} km</span>
+            <span class="vd-delta">Total ${sumKm.toFixed(1)} km · ${modeKm.toFixed(1)} km from ${modeLabel}</span>
           </div>
-          <div class="drive-row">~${driveMinutes(ka)} min drive for Ishika · ~${driveMinutes(kb)} min for Arpit (city traffic est.)</div>
+          <div class="venue-dist-rows">${distRows}</div>
+          <div class="drive-row">~${roughMins} min combined (rough traffic est.)</div>
           <div class="fairness-micro">${fairMicro}</div>
           <div class="venue-actions">
             <button class="btn-show" type="button">📍 Show on map</button>
@@ -1033,43 +2092,80 @@
         card.addEventListener("click", (e) => {
           if (e.target.closest("a, button")) return;
           selectedVenueRow = row;
-          setTravelComparison(row.ka, row.kb, row.v.name);
+          setFairnessUI(row.v.name, row.dists);
         });
 
         card.querySelector(".btn-show").addEventListener("click", (e) => {
           e.stopPropagation();
           selectedVenueRow = row;
-          setTravelComparison(row.ka, row.kb, row.v.name);
+          setFairnessUI(row.v.name, row.dists);
+          if (!map.hasLayer(row.marker)) row.marker.addTo(map);
           map.flyTo([v.lat,v.lng], Math.max(map.getZoom(),14), { duration:0.65 });
           row.marker.openPopup();
         });
 
         list.appendChild(card);
       });
+
+      if (sortedRows.length > shown.length) {
+        const wrap = document.createElement("div");
+        wrap.className = "load-more-wrap";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "load-more-btn";
+        btn.textContent = `Load more places (${shown.length}/${sortedRows.length})`;
+        btn.addEventListener("click", () => {
+          listVisibleLimit += LIST_PAGE_SIZE;
+          applyFilter();
+        });
+        wrap.appendChild(btn);
+        list.appendChild(wrap);
+      }
     }
 
     // ── Apply filter ──
     function applyFilter() {
-      const visible = [];
+      if (!document.body.classList.contains("setup-done")) return;
+      const scopeKey = `${activeFilter}|${activeMidMode}`;
+      if (scopeKey !== lastListScopeKey) {
+        listVisibleLimit = LIST_PAGE_SIZE;
+        lastListScopeKey = scopeKey;
+      }
+
+      const scoped = vMarkers.filter(matchesRow);
+      const sortedRows = scoped.slice().sort((a, b) => a.sumKm - b.sumKm);
+      const markerRows = sortedRows.slice(0, listVisibleLimit);
+      const shownCount = Math.min(listVisibleLimit, sortedRows.length);
       vMarkers.forEach(row => {
-        if (matches(row.v)) { if (!map.hasLayer(row.marker)) row.marker.addTo(map); visible.push(row); }
-        else { if (map.hasLayer(row.marker)) map.removeLayer(row.marker); }
+        if (markerRows.indexOf(row) !== -1) {
+          if (!map.hasLayer(row.marker)) row.marker.addTo(map);
+        } else if (map.hasLayer(row.marker)) {
+          map.removeLayer(row.marker);
+        }
       });
 
-      if (selectedVenueRow && visible.indexOf(selectedVenueRow) === -1) {
+      if (selectedVenueRow && scoped.indexOf(selectedVenueRow) === -1) {
         selectedVenueRow = null;
       }
+
+      const dMid = meetCenter
+        ? people.map(p => haversineKm(p.lat, p.lng, meetCenter.lat, meetCenter.lng))
+        : [];
+
       if (selectedVenueRow) {
-        setTravelComparison(selectedVenueRow.ka, selectedVenueRow.kb, selectedVenueRow.v.name);
-      } else {
-        setTravelComparison(dAM, dBM, "Geographic midpoint");
+        setFairnessUI(selectedVenueRow.v.name, selectedVenueRow.dists);
+      } else if (people.length && meetCenter) {
+        setFairnessUI("Fair meet point (Σd + W·variance)", dMid);
       }
 
       const fDef = FILTERS.find(f => f.id === activeFilter);
+      const baseTitle = activeFilter === "all"
+        ? `Meet spots (0-${venueRadiusKm} km from ${midModeLabel()})`
+        : `Spots — ${fDef.label} (0-${venueRadiusKm} km from ${midModeLabel()})`;
       document.getElementById("panelTitle").textContent =
-        activeFilter === "all" ? "Meet spots" : `Spots — ${fDef.label}`;
+        `${baseTitle} · Showing ${shownCount}/${sortedRows.length}`;
 
-      rebuildList(visible);
+      rebuildList(sortedRows);
     }
 
     // ── Filter buttons ──
@@ -1093,10 +2189,43 @@
 
     // ── Fit map ──
     document.getElementById("btnFit").addEventListener("click", () => {
-      const b = L.latLngBounds([[A.lat,A.lng],[B.lat,B.lng],[M.lat,M.lng]]);
-      vMarkers.forEach(r => { if (matches(r.v)) b.extend([r.v.lat, r.v.lng]); });
-      map.fitBounds(b, { padding:[50,50], maxZoom:12 });
+      if (!people.length || !meetCenter) return;
+      const b = L.latLngBounds(people.map(p => [p.lat, p.lng]));
+      b.extend([meetCenter.lat, meetCenter.lng]);
+      if (timeCenter) b.extend([timeCenter.lat, timeCenter.lng]);
+      vMarkers.forEach(r => { if (matchesRow(r)) b.extend([r.v.lat, r.v.lng]); });
+      map.fitBounds(b, { padding: [50, 50], maxZoom: 12 });
     });
+
+    document.getElementById("btnGroup").addEventListener("click", () => {
+      if (!confirm("Set up the group again? This clears the current map pins.")) return;
+      resetPlanner();
+    });
+
+    const panelEl = document.querySelector(".panel");
+    const panelToggleBtn = document.getElementById("btnPanelToggle");
+    function setPanelCollapsed(collapsed) {
+      if (!panelEl || !panelToggleBtn) return;
+      panelEl.classList.toggle("collapsed", collapsed);
+      panelToggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      panelToggleBtn.setAttribute("aria-label", collapsed ? "Expand meet spots panel" : "Collapse meet spots panel");
+      panelToggleBtn.setAttribute("title", collapsed ? "Expand panel" : "Collapse panel");
+      panelToggleBtn.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">${collapsed ? "expand_less" : "expand_more"}</span>`;
+    }
+    if (panelToggleBtn) {
+      panelToggleBtn.addEventListener("click", () => {
+        const willCollapse = !panelEl.classList.contains("collapsed");
+        setPanelCollapsed(willCollapse);
+      });
+    }
+
+    function applyMobilePanelDefault() {
+      if (mobilePanelInitDone) return;
+      if (window.matchMedia("(max-width: 700px)").matches) {
+        setPanelCollapsed(true);
+      }
+      mobilePanelInitDone = true;
+    }
 
     // ── Share / copy link ──
     function showToast(msg) {
@@ -1114,9 +2243,128 @@
       });
     });
 
-    // ── Init ──
-    applyFilter();
-    map.fitBounds(allBounds, { padding:[55,55], maxZoom:12 });
+    // ── Onboarding ──
+    document.getElementById("btnCountNext").addEventListener("click", () => {
+      let n = parseInt(document.getElementById("inputCount").value, 10);
+      if (Number.isNaN(n)) n = 2;
+      n = Math.min(8, Math.max(2, n));
+      document.getElementById("inputCount").value = String(n);
+      const wrap = document.getElementById("setupNamesFields");
+      wrap.innerHTML = "";
+      for (let i = 0; i < n; i++) {
+        const row = document.createElement("div");
+        row.className = "setup-person-row";
+        row.innerHTML = `
+          <div class="setup-field">
+            <label for="name${i}">Person ${i + 1} — name</label>
+            <input id="name${i}" type="text" autocomplete="nickname" placeholder="Name" maxlength="40" />
+          </div>
+          <div class="setup-field">
+            <label for="pin${i}">PIN</label>
+            <input id="pin${i}" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="110001" maxlength="6" pattern="[0-9]{6}" />
+          </div>`;
+        wrap.appendChild(row);
+      }
+      document.getElementById("setupGeocodeError").classList.add("hidden");
+      document.getElementById("setupGeocodeStatus").classList.add("hidden");
+      document.getElementById("setupStepCount").classList.add("hidden");
+      document.getElementById("setupStepNames").classList.remove("hidden");
+      document.getElementById("name0").focus();
+    });
+
+    document.getElementById("btnNamesBack").addEventListener("click", () => {
+      document.getElementById("setupStepNames").classList.add("hidden");
+      document.getElementById("setupStepCount").classList.remove("hidden");
+    });
+
+    document.getElementById("btnGeocodePlan").addEventListener("click", async () => {
+      const errEl = document.getElementById("setupGeocodeError");
+      const stEl = document.getElementById("setupGeocodeStatus");
+      const btn = document.getElementById("btnGeocodePlan");
+      errEl.classList.add("hidden");
+      errEl.textContent = "";
+      stEl.classList.add("hidden");
+      stEl.textContent = "";
+
+      const rows = document.querySelectorAll("#setupNamesFields .setup-person-row");
+      if (!rows.length) return;
+
+      btn.disabled = true;
+      people = [];
+
+      try {
+        for (let i = 0; i < rows.length; i++) {
+          const nameInp = rows[i].querySelector(`input[id^="name"]`);
+          const pinInp = rows[i].querySelector(`input[id^="pin"]`);
+          const nm = ((nameInp && nameInp.value) || "").trim() || `Person ${i + 1}`;
+          const pinRaw = (pinInp && pinInp.value) || "";
+
+          if (i > 0) await sleep(PHOTON_DELAY_MS);
+          stEl.textContent = `Looking up PIN for ${nm}… (${i + 1} of ${rows.length})`;
+          stEl.classList.remove("hidden");
+
+          const geo = await geocodeIndianPincode(pinRaw);
+          people.push({ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode, marker: null });
+        }
+
+        stEl.classList.add("hidden");
+        document.getElementById("setupOverlay").classList.add("hidden");
+        await completeSetup();
+      } catch (e) {
+        people = [];
+        errEl.textContent = e.message || "Lookup failed. Check PIN codes or use the map.";
+        errEl.classList.remove("hidden");
+        stEl.classList.add("hidden");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("btnManualMap").addEventListener("click", () => {
+      document.getElementById("setupGeocodeError").classList.add("hidden");
+      document.getElementById("setupGeocodeStatus").classList.add("hidden");
+
+      const rows = document.querySelectorAll("#setupNamesFields .setup-person-row");
+      people = [];
+      rows.forEach((row, i) => {
+        const nameInp = row.querySelector(`input[id^="name"]`);
+        const pinInp = row.querySelector(`input[id^="pin"]`);
+        const nm = ((nameInp && nameInp.value) || "").trim() || `Person ${i + 1}`;
+        const pinRaw = ((pinInp && pinInp.value) || "").replace(/\D/g, "");
+        const pincode = pinRaw.length === 6 ? pinRaw : null;
+        people.push({ name: nm, lat: null, lng: null, marker: null, pincode });
+      });
+
+      placingIndex = 0;
+      document.getElementById("setupOverlay").classList.add("hidden");
+      const hint = document.getElementById("placeHint");
+      hint.classList.remove("hidden");
+      hint.innerHTML = `Tap map for <span class="ph-name">${escapeHtml(people[0].name)}</span> <span style="opacity:.75">(1 of ${people.length})</span>`;
+      map.on("click", onPlaceClick);
+    });
+
+    const radiusSlider = document.getElementById("radiusSlider");
+    if (radiusSlider) {
+      radiusSlider.addEventListener("input", () => {
+        const next = parseInt(radiusSlider.value, 10) || DEFAULT_VENUE_RADIUS_KM;
+        const previewKm = Math.max(10, Math.min(100, next));
+        syncRadiusUi(previewKm);
+        showMidRadius(activeMidMode, previewKm);
+        if (radiusFetchTimer) clearTimeout(radiusFetchTimer);
+        radiusFetchTimer = setTimeout(() => {
+          void setVenueRadius(previewKm);
+        }, 280);
+      });
+      radiusSlider.addEventListener("change", () => {
+        const next = parseInt(radiusSlider.value, 10) || DEFAULT_VENUE_RADIUS_KM;
+        if (radiusFetchTimer) clearTimeout(radiusFetchTimer);
+        radiusFetchTimer = setTimeout(() => {
+          void setVenueRadius(next);
+        }, 60);
+      });
+    }
+    syncRadiusUi();
+    applyMobilePanelDefault();
 
     window.addEventListener("resize", () => map.invalidateSize());
   })();
