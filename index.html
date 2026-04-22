@@ -92,6 +92,40 @@
     }
     .top-bar > * { pointer-events: auto; }
 
+    .mobile-menu-btn {
+      position: fixed;
+      z-index: 2120;
+      top: max(0.5rem, env(safe-area-inset-top));
+      left: max(0.5rem, env(safe-area-inset-left));
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: #cbd5e1;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-menu-btn .material-symbols-outlined { font-size: 1.15rem; }
+
+    .mobile-menu-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1090;
+      background: rgba(4,8,14,0.24);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+    }
+    .mobile-menu-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
     .top-main-row {
       display: flex;
       flex-wrap: nowrap;
@@ -433,10 +467,29 @@
     .ldot.tmid { background: #f97316; }
 
     @media (max-width: 700px) {
+      .mobile-menu-btn { display: inline-flex; }
       .top-bar {
+        z-index: 2110;
         left: max(0.35rem, env(safe-area-inset-left));
-        right: max(0.35rem, env(safe-area-inset-right));
+        right: auto;
         top: max(0.35rem, env(safe-area-inset-top));
+        width: min(84vw, 340px);
+        max-height: calc(100dvh - 0.7rem);
+        overflow-y: auto;
+        padding: 0.2rem;
+        background: rgba(8,12,20,0.75);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 20px 56px rgba(0,0,0,0.45);
+        transform: translateX(calc(-100% - 0.75rem));
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+      }
+      .top-bar.mobile-open {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
       }
       .top-main-row {
         flex-wrap: wrap;
@@ -733,6 +786,8 @@
     }
     .venue-actions .btn-show { background: rgba(251,191,36,0.12); color: #fcd34d; }
     .venue-actions .btn-show:hover { background: rgba(251,191,36,0.22); }
+    .venue-actions .btn-copy { background: rgba(148,163,184,0.14); color: #cbd5e1; }
+    .venue-actions .btn-copy:hover { background: rgba(148,163,184,0.24); }
     .venue-actions .btn-dir { background: rgba(52,211,153,0.1); color: var(--mid-col); }
     .venue-actions .btn-dir:hover { background: rgba(52,211,153,0.2); }
     .venue-actions .btn-share-v { background: rgba(167,139,250,0.1); color: #c4b5fd; }
@@ -751,7 +806,7 @@
     .toast {
       position: fixed;
       z-index: 9999;
-      bottom: 1.5rem;
+      bottom: max(3.8rem, calc(env(safe-area-inset-bottom) + 3rem));
       left: 50%;
       transform: translateX(-50%) translateY(120%);
       background: var(--surface-2);
@@ -767,6 +822,13 @@
       pointer-events: none;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
+    @media (max-width: 700px) {
+      .toast {
+        bottom: max(4.8rem, calc(env(safe-area-inset-bottom) + 4.2rem));
+        font-size: 0.68rem;
+        padding: 0.42rem 0.8rem;
+      }
+    }
 
     /* ── ATTRIB ── */
     .attrib {
@@ -820,6 +882,8 @@
     body:not(.setup-done) .top-bar,
     body:not(.setup-done) .panel,
     body:not(.setup-done) .attrib { visibility: hidden; }
+    body:not(.setup-done) .mobile-menu-btn,
+    body:not(.setup-done) .mobile-menu-backdrop { display: none; }
 
     .setup-overlay {
       position: fixed;
@@ -936,6 +1000,14 @@
       border-color: rgba(52,211,153,0.45);
       color: #6ee7b7;
     }
+    .setup-actions button.back-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.1rem;
+      padding: 0.45rem 0.52rem;
+    }
+    .setup-actions button.back-icon .material-symbols-outlined { font-size: 1.05rem; }
     .setup-actions button:active { transform: scale(0.97); }
 
     .place-hint {
@@ -1060,14 +1132,20 @@
       <p class="setup-geocode-status hidden" id="setupGeocodeStatus" aria-live="polite"></p>
       <p class="setup-error hidden" id="setupGeocodeError" role="alert"></p>
       <div class="setup-actions">
-        <button type="button" id="btnNamesBack">Back</button>
+        <button type="button" id="btnNamesBack" class="back-icon" aria-label="Go back" title="Back">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        </button>
         <button type="button" id="btnManualMap">Use map instead</button>
-        <button type="button" class="primary" id="btnGeocodePlan">Look up PINs &amp; plan</button>
+        <button type="button" class="primary" id="btnGeocodePlan">Find best meet spot</button>
       </div>
     </div>
   </div>
 
   <div id="placeHint" class="place-hint hidden" aria-live="polite"></div>
+  <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" aria-label="Open options menu" aria-expanded="false" title="Options">
+    <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+  </button>
+  <div id="mobileMenuBackdrop" class="mobile-menu-backdrop" aria-hidden="true"></div>
   <div id="planLoader" class="plan-loader hidden" aria-live="polite" aria-busy="true">
     <div class="plan-loader-card">
       <div class="plan-spinner" aria-hidden="true"></div>
@@ -1076,7 +1154,7 @@
     </div>
   </div>
 
-  <div class="top-bar">
+  <div class="top-bar" id="topBar">
     <div class="top-main-row">
       <div class="title-card">
         <div class="title-eyebrow">💌 Meetup planner</div>
@@ -1622,6 +1700,19 @@ out center;
       return people.map(p => haversineKm(p.lat, p.lng, v.lat, v.lng));
     }
 
+    function venueAddressText(v) {
+      return `${v.name}, ${v.tag}. Coordinates: ${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}`;
+    }
+
+    function copyVenueAddress(v) {
+      const text = venueAddressText(v);
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("📍 Spot copied");
+      }).catch(() => {
+        showToast("📍 Copy failed");
+      });
+    }
+
     function buildMidPopup(dMid) {
       const names = people.map(p => p.name);
       const lines = dMid.map((d, i) =>
@@ -1772,6 +1863,9 @@ out center;
         <div class="popup-dist" style="font-weight:700;color:#94a3b8;margin-top:0.25rem">Total: ${sumKm.toFixed(1)} km</div>
         <div class="popup-dist" style="color:#94a3b8">From Dist-mid: ${centerKmDist.toFixed(1)} km${Number.isFinite(centerKmTime) ? ` · From Time-mid: ${centerKmTime.toFixed(1)} km` : ""}</div>
         ${popupFairLine(dists, names)}
+        <button class="popup-link popup-copy" type="button" data-copy="${escapeHtml(venueAddressText(v))}">
+          <span class="material-symbols-outlined" style="font-size:13px">content_copy</span>Copy address
+        </button>
         <a class="popup-link" href="${mapsUrl(v.lat, v.lng)}" target="_blank" rel="noopener">
           <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps
         </a>`;
@@ -1822,6 +1916,18 @@ out center;
         const mk = L.marker([v.lat, v.lng], { icon: venueIcon(v) }).addTo(map);
         const row = { marker: mk, v, dists, sumKm, centerKmDist, centerKmTime };
         mk.bindPopup(popupFor(v, dists, centerKmDist, centerKmTime));
+        mk.on("popupopen", () => {
+          const el = mk.getPopup() && mk.getPopup().getElement();
+          if (!el) return;
+          const btn = el.querySelector(".popup-copy");
+          if (!btn || btn.dataset.bound === "1") return;
+          btn.dataset.bound = "1";
+          btn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            copyVenueAddress(v);
+          });
+        });
         mk.on("click", () => {
           selectedVenueRow = row;
           setFairnessUI(v.name, dists);
@@ -2086,6 +2192,7 @@ out center;
           <div class="fairness-micro">${fairMicro}</div>
           <div class="venue-actions">
             <button class="btn-show" type="button">📍 Show on map</button>
+            <button class="btn-copy" type="button">📋 Copy address</button>
             <a class="btn-dir" href="${mapsUrl(v.lat,v.lng)}" target="_blank" rel="noopener">Directions →</a>
           </div>`;
 
@@ -2102,6 +2209,10 @@ out center;
           if (!map.hasLayer(row.marker)) row.marker.addTo(map);
           map.flyTo([v.lat,v.lng], Math.max(map.getZoom(),14), { duration:0.65 });
           row.marker.openPopup();
+        });
+        card.querySelector(".btn-copy").addEventListener("click", (e) => {
+          e.stopPropagation();
+          copyVenueAddress(v);
         });
 
         list.appendChild(card);
@@ -2225,6 +2336,30 @@ out center;
         setPanelCollapsed(true);
       }
       mobilePanelInitDone = true;
+    }
+
+    const topBarEl = document.getElementById("topBar");
+    const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+    const mobileMenuBackdrop = document.getElementById("mobileMenuBackdrop");
+    function setMobileMenuOpen(open) {
+      if (!topBarEl || !mobileMenuBtn || !mobileMenuBackdrop) return;
+      const isMobile = window.matchMedia("(max-width: 700px)").matches;
+      if (!isMobile) open = false;
+      topBarEl.classList.toggle("mobile-open", open);
+      mobileMenuBackdrop.classList.toggle("open", open);
+      mobileMenuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      mobileMenuBtn.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">${open ? "close" : "menu"}</span>`;
+      mobileMenuBtn.setAttribute("aria-label", open ? "Close options menu" : "Open options menu");
+      mobileMenuBtn.setAttribute("title", open ? "Close options" : "Options");
+    }
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener("click", () => {
+        const opening = !topBarEl.classList.contains("mobile-open");
+        setMobileMenuOpen(opening);
+      });
+    }
+    if (mobileMenuBackdrop) {
+      mobileMenuBackdrop.addEventListener("click", () => setMobileMenuOpen(false));
     }
 
     // ── Share / copy link ──
@@ -2366,7 +2501,12 @@ out center;
     syncRadiusUi();
     applyMobilePanelDefault();
 
-    window.addEventListener("resize", () => map.invalidateSize());
+    window.addEventListener("resize", () => {
+      map.invalidateSize();
+      if (!window.matchMedia("(max-width: 700px)").matches) {
+        setMobileMenuOpen(false);
+      }
+    });
   })();
   </script>
 </body>
