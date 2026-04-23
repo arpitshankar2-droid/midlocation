@@ -945,6 +945,16 @@
       border-color: rgba(52,211,153,0.45);
       box-shadow: 0 0 0 2px rgba(52,211,153,0.12);
     }
+    .setup-field input.field-invalid {
+      border-color: rgba(251,113,133,0.75);
+      box-shadow: 0 0 0 2px rgba(251,113,133,0.16);
+    }
+    .setup-inline-error {
+      font-size: 0.64rem;
+      color: #fb7185;
+      margin-top: 0.22rem;
+      line-height: 1.25;
+    }
     .setup-names-wrap {
       max-height: min(46vh, 320px);
       overflow-y: auto;
@@ -999,6 +1009,7 @@
       background: rgba(52,211,153,0.18);
       border-color: rgba(52,211,153,0.45);
       color: #6ee7b7;
+      box-shadow: 0 0 0 1px rgba(52,211,153,0.25), 0 6px 18px rgba(52,211,153,0.14);
     }
     .setup-actions button.back-icon {
       display: inline-flex;
@@ -1108,6 +1119,29 @@
     }
     .load-more-btn:hover { background: rgba(56,189,248,0.24); }
     .load-more-btn:active { transform: scale(0.97); }
+
+    .skeleton-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.6rem;
+      margin-bottom: 0.42rem;
+    }
+    .skeleton-line {
+      height: 0.58rem;
+      border-radius: 6px;
+      background: linear-gradient(90deg, rgba(148,163,184,0.16) 0%, rgba(148,163,184,0.3) 50%, rgba(148,163,184,0.16) 100%);
+      background-size: 220% 100%;
+      animation: skel 1.2s ease-in-out infinite;
+      margin-bottom: 0.32rem;
+    }
+    .skeleton-line:last-child { margin-bottom: 0; }
+    .skeleton-line.short { width: 48%; }
+    .skeleton-line.mid { width: 72%; }
+    @keyframes skel {
+      from { background-position: 200% 0; }
+      to { background-position: -20% 0; }
+    }
   </style>
 </head>
 <body>
@@ -1206,11 +1240,11 @@
     </div>
     <div class="panel-scroll">
       <div id="placeList"></div>
-      <p class="osm-inline">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+      <p class="osm-inline">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>
     </div>
   </aside>
 
-  <p class="attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+  <p class="attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></p>
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
@@ -1308,9 +1342,20 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
+    function haversineKmCached(cosLat1, lat1, lng1, lat2, lng2) {
+      const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat / 2) ** 2 + cosLat1 * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
     function mapsUrl(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 
-    function driveMinutes(km) { return Math.round(km * 1.4 / 30 * 60); }
+    function driveMinutes(km) {
+      const hr = new Date().getHours();
+      const isPeak = (hr >= 8 && hr <= 10) || (hr >= 17 && hr <= 20);
+      const kmph = isPeak ? 15 : 25;
+      return Math.round((km / kmph) * 60);
+    }
 
     function escapeHtml(s) {
       const d = document.createElement("div");
@@ -1355,17 +1400,29 @@
 
     /** Grid search + local zoom to minimize Cost (no external solver; fine for N ≤ 8). */
     function optimizeMeetupPoint(people, W) {
+      const personGeo = people.map(p => ({
+        lat: p.lat,
+        lng: p.lng,
+        cosLat: Math.cos(toRad(p.lat))
+      }));
+      function fastCost(lat, lng) {
+        const dists = personGeo.map(p => haversineKmCached(p.cosLat, p.lat, p.lng, lat, lng));
+        const sumD = sum(dists);
+        const dBar = dists.length > 0 ? sumD / dists.length : 0;
+        const varSum = dists.reduce((s, d) => s + (d - dBar) ** 2, 0);
+        return sumD + W * varSum;
+      }
       const box = meetupSearchBBox(people);
       let minLat = box.minLat, maxLat = box.maxLat, minLng = box.minLng, maxLng = box.maxLng;
       let bestLat = (minLat + maxLat) / 2;
       let bestLng = (minLng + maxLng) / 2;
-      let bestCost = meetupCostAt(bestLat, bestLng, people, W);
+      let bestCost = fastCost(bestLat, bestLng);
       const coarse = 52;
       for (let i = 0; i <= coarse; i++) {
         const lat = minLat + (maxLat - minLat) * (i / coarse);
         for (let j = 0; j <= coarse; j++) {
           const lng = minLng + (maxLng - minLng) * (j / coarse);
-          const c = meetupCostAt(lat, lng, people, W);
+          const c = fastCost(lat, lng);
           if (c < bestCost) { bestCost = c; bestLat = lat; bestLng = lng; }
         }
       }
@@ -1379,7 +1436,7 @@
           const lat = loLat + (hiLat - loLat) * (i / fine);
           for (let j = 0; j <= fine; j++) {
             const lng = loLng + (hiLng - loLng) * (j / fine);
-            const c = meetupCostAt(lat, lng, people, W);
+            const c = fastCost(lat, lng);
             if (c < bestCost) { bestCost = c; bestLat = lat; bestLng = lng; }
           }
         }
@@ -1389,7 +1446,7 @@
       return { lat: bestLat, lng: bestLng };
     }
 
-    function timeCandidateGrid(people, rows = 5, cols = 5) {
+    function timeCandidateGrid(people, rows = 8, cols = 8) {
       const box = meetupSearchBBox(people);
       const cands = [];
       for (let i = 0; i < rows; i++) {
@@ -1445,7 +1502,7 @@
     }
 
     async function computeTimeMidpoint(people) {
-      const candidates = timeCandidateGrid(people, 5, 5);
+      const candidates = timeCandidateGrid(people);
       const durations = await osrmTableDurations(people, candidates);
       return pickBestTimeCandidate(candidates, durations);
     }
@@ -1701,7 +1758,7 @@ out center;
     }
 
     function venueAddressText(v) {
-      return `${v.name}, ${v.tag}. Coordinates: ${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}`;
+      return `${v.name} — ${v.tag}\n${mapsUrl(v.lat, v.lng)}`;
     }
 
     function copyVenueAddress(v) {
@@ -1711,6 +1768,44 @@ out center;
       }).catch(() => {
         showToast("📍 Copy failed");
       });
+    }
+
+    function showVenueSkeleton(count = 4) {
+      const list = document.getElementById("placeList");
+      if (!list) return;
+      list.innerHTML = "";
+      for (let i = 0; i < count; i++) {
+        const c = document.createElement("div");
+        c.className = "skeleton-card";
+        c.innerHTML = `
+          <div class="skeleton-line mid"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>`;
+        list.appendChild(c);
+      }
+    }
+
+    function clearPinFieldErrors() {
+      document.querySelectorAll("#setupNamesFields input[id^='pin']").forEach(inp => {
+        inp.classList.remove("field-invalid");
+        const field = inp.closest(".setup-field");
+        const old = field && field.querySelector(".setup-inline-error");
+        if (old) old.remove();
+      });
+    }
+
+    function showPinFieldError(pinInput, msg) {
+      if (!pinInput) return;
+      pinInput.classList.add("field-invalid");
+      const field = pinInput.closest(".setup-field");
+      if (!field) return;
+      const old = field.querySelector(".setup-inline-error");
+      if (old) old.remove();
+      const e = document.createElement("div");
+      e.className = "setup-inline-error";
+      e.textContent = msg;
+      field.appendChild(e);
+      pinInput.focus();
     }
 
     function buildMidPopup(dMid) {
@@ -1724,7 +1819,7 @@ out center;
         <div class="popup-title">📍 Fair meetup point</div>
         <div class="popup-sub">Grid‑searched minimum of <strong>Cost = Σdᵢ + ${W}·Σ(dᵢ − d̄)²</strong> (km, haversine). d̄ is the average of all dᵢ; the second term penalizes unequal trip lengths. Here Σdᵢ = ${br.sumD.toFixed(1)} km, Σ(dᵢ−d̄)² = ${br.varSum.toFixed(2)}. Venue cards still rank by raw <strong>total</strong> km to each place.</div>
         <div class="popup-dist">${lines}</div>
-        <a class="popup-link" href="${mapsUrl(meetCenter.lat, meetCenter.lng)}" target="_blank" rel="noopener">
+        <a class="popup-link" href="${mapsUrl(meetCenter.lat, meetCenter.lng)}" target="_blank" rel="noopener noreferrer">
           <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`;
     }
 
@@ -1741,7 +1836,7 @@ out center;
         <div class="popup-sub">Estimated by OSRM driving times over grid candidates with <strong>Cost_time = max(tᵢ) + ${TIME_VAR_WEIGHT}·Variance(tᵢ)</strong>. This minimizes the worst commute while keeping commute times balanced.</div>
         <div class="popup-dist">${lines}</div>
         <div class="popup-dist" style="color:#94a3b8">max(tᵢ): ${Math.round(maxT)} min · variance: ${variance.toFixed(1)}</div>
-        <a class="popup-link" href="${mapsUrl(timeCenter.lat, timeCenter.lng)}" target="_blank" rel="noopener">
+        <a class="popup-link" href="${mapsUrl(timeCenter.lat, timeCenter.lng)}" target="_blank" rel="noopener noreferrer">
           <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps</a>`;
     }
 
@@ -1866,7 +1961,7 @@ out center;
         <button class="popup-link popup-copy" type="button" data-copy="${escapeHtml(venueAddressText(v))}">
           <span class="material-symbols-outlined" style="font-size:13px">content_copy</span>Copy address
         </button>
-        <a class="popup-link" href="${mapsUrl(v.lat, v.lng)}" target="_blank" rel="noopener">
+        <a class="popup-link" href="${mapsUrl(v.lat, v.lng)}" target="_blank" rel="noopener noreferrer">
           <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps
         </a>`;
     }
@@ -1887,6 +1982,7 @@ out center;
     async function refreshDiscoveredVenues() {
       if (!meetCenter) return;
       document.getElementById("panelTitle").textContent = `Finding places within ${venueRadiusKm} km...`;
+      showVenueSkeleton(5);
       try {
         const fromDist = await fetchNearbyVenues(meetCenter.lat, meetCenter.lng, venueRadiusKm);
         let combined = fromDist.slice();
@@ -1904,6 +2000,7 @@ out center;
         discoveredVenues = combined;
       } catch (e) {
         discoveredVenues = [];
+        clearVenueMarkers();
         showToast("Could not fetch places right now. Try again.");
       }
 
@@ -1939,7 +2036,10 @@ out center;
     async function completeSetup() {
       startPlanLoader("Finding optimal route for the meetup…");
       try {
-      meetCenter = optimizeMeetupPoint(people, MEETUP_FAIRNESS_WEIGHT);
+      await new Promise(resolve => setTimeout(() => {
+        meetCenter = optimizeMeetupPoint(people, MEETUP_FAIRNESS_WEIGHT);
+        resolve();
+      }, 0));
       timeCenter = null;
 
       spokesLayer = L.layerGroup().addTo(map);
@@ -1991,7 +2091,7 @@ out center;
           : `<div class="popup-sub">Starting point ${i + 1}</div>`;
         p.marker.bindPopup(`<div class="popup-title">${escapeHtml(p.name)}</div>
           ${pinLine}
-          <a class="popup-link" href="${mapsUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open in Maps</a>`);
+          <a class="popup-link" href="${mapsUrl(p.lat, p.lng)}" target="_blank" rel="noopener noreferrer">Open in Maps</a>`);
         p.marker.on("click", () => {
           selectedVenueRow = null;
           setFairnessUI("Fair meet point (Σd + W·variance)", dMid);
@@ -2016,6 +2116,9 @@ out center;
       if (timeCenter) b.extend([timeCenter.lat, timeCenter.lng]);
       discoveredVenues.forEach(v => b.extend([v.lat, v.lng]));
       map.fitBounds(b, { padding: [55, 55], maxZoom: 12 });
+      } catch (e) {
+        showToast("Could not finish planning. Please try again.");
+        throw e;
       } finally {
         stopPlanLoader();
       }
@@ -2193,7 +2296,7 @@ out center;
           <div class="venue-actions">
             <button class="btn-show" type="button">📍 Show on map</button>
             <button class="btn-copy" type="button">📋 Copy address</button>
-            <a class="btn-dir" href="${mapsUrl(v.lat,v.lng)}" target="_blank" rel="noopener">Directions →</a>
+            <a class="btn-dir" href="${mapsUrl(v.lat,v.lng)}" target="_blank" rel="noopener noreferrer">Directions →</a>
           </div>`;
 
         card.addEventListener("click", (e) => {
@@ -2276,6 +2379,21 @@ out center;
       document.getElementById("panelTitle").textContent =
         `${baseTitle} · Showing ${shownCount}/${sortedRows.length}`;
 
+      const basePool = vMarkers.filter(withinVenueRadius);
+      const counts = { all: basePool.length, movies: 0, cafes: 0, malls: 0, fun: 0 };
+      basePool.forEach(r => {
+        (r.v.cats || []).forEach(c => {
+          if (counts[c] !== undefined) counts[c] += 1;
+        });
+      });
+      document.querySelectorAll(".filter-btn").forEach(b => {
+        const id = b.dataset.filter;
+        const base = b.dataset.label || id;
+        const labelEl = b.querySelector(".flbl");
+        if (!labelEl) return;
+        labelEl.textContent = `${base} (${counts[id] ?? 0})`;
+      });
+
       rebuildList(sortedRows);
     }
 
@@ -2286,6 +2404,7 @@ out center;
       btn.className = "filter-btn";
       btn.setAttribute("aria-pressed", def.id==="all" ? "true" : "false");
       btn.dataset.filter = def.id;
+      btn.dataset.label = def.label;
       btn.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">${def.icon}</span>
                        <span class="flbl">${def.label}</span>`;
       btn.addEventListener("click", () => {
@@ -2371,10 +2490,23 @@ out center;
     }
 
     document.getElementById("btnShare").addEventListener("click", () => {
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        showToast("📋 Link copied! Share it with them 💌");
+      const bestRows = vMarkers.filter(matchesRow).sort((a, b) => a.sumKm - b.sumKm);
+      if (!bestRows.length) {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+          showToast("📋 Link copied");
+        }).catch(() => {
+          showToast("📋 Copy this link: " + window.location.href);
+        });
+        return;
+      }
+      const best = bestRows[0];
+      const names = people.map(p => p.name);
+      const legs = best.dists.map((d, i) => `~${driveMinutes(d)} min for ${names[i]}`).join(", ");
+      const msg = `Best spot for us: ${best.v.name}, ${legs} -> ${mapsUrl(best.v.lat, best.v.lng)}`;
+      navigator.clipboard.writeText(msg).then(() => {
+        showToast("📋 Share text copied");
       }).catch(() => {
-        showToast("📋 Copy this link: " + window.location.href);
+        showToast("📋 Copy failed");
       });
     });
 
@@ -2420,6 +2552,7 @@ out center;
       errEl.textContent = "";
       stEl.classList.add("hidden");
       stEl.textContent = "";
+      clearPinFieldErrors();
 
       const rows = document.querySelectorAll("#setupNamesFields .setup-person-row");
       if (!rows.length) return;
@@ -2438,7 +2571,14 @@ out center;
           stEl.textContent = `Looking up PIN for ${nm}… (${i + 1} of ${rows.length})`;
           stEl.classList.remove("hidden");
 
-          const geo = await geocodeIndianPincode(pinRaw);
+          let geo;
+          try {
+            geo = await geocodeIndianPincode(pinRaw);
+          } catch (geoErr) {
+            const txt = (geoErr && geoErr.message) || "PIN lookup failed";
+            showPinFieldError(pinInp, txt);
+            throw new Error(`Couldn't locate PIN for ${nm}.`);
+          }
           people.push({ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode, marker: null });
         }
 
@@ -2447,8 +2587,7 @@ out center;
         await completeSetup();
       } catch (e) {
         people = [];
-        errEl.textContent = e.message || "Lookup failed. Check PIN codes or use the map.";
-        errEl.classList.remove("hidden");
+        errEl.classList.add("hidden");
         stEl.classList.add("hidden");
       } finally {
         btn.disabled = false;
