@@ -1312,6 +1312,27 @@
       </div>
       <div class="setup-actions">
         <button type="button" class="primary" id="btnCountNext">Continue</button>
+        <button type="button" id="btnCreateRoomMode">Create room</button>
+      </div>
+    </div>
+    <div class="setup-card hidden" id="setupStepRoom">
+      <h2>Create room</h2>
+      <p class="setup-lead">Start a shared room with your name and India PIN. Share the link, then allow join requests.</p>
+      <div class="setup-field">
+        <label for="roomHostName">Your name</label>
+        <input id="roomHostName" type="text" autocomplete="nickname" maxlength="40" placeholder="Name" />
+      </div>
+      <div class="setup-field">
+        <label for="roomHostPin">PIN</label>
+        <input id="roomHostPin" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="6" placeholder="110001" />
+      </div>
+      <p class="setup-geocode-status hidden" id="roomCreateStatus" aria-live="polite"></p>
+      <p class="setup-error hidden" id="roomCreateError" role="alert"></p>
+      <div class="setup-actions">
+        <button type="button" id="btnRoomBack" class="back-icon" aria-label="Go back" title="Back">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        </button>
+        <button type="button" class="primary" id="btnCreateRoomNow">Create room link</button>
       </div>
     </div>
     <div class="setup-card hidden" id="setupStepNames">
@@ -1825,6 +1846,9 @@ out center;
     let joinWaitTimer = null;
     let likeSyncTimer = null;
     let shareModalEl = null;
+    let shareStartCallback = null;
+    let shareSessionMode = "standard";
+    let joinRequestPollTimer = null;
     let spinOverlayEl = null;
     let spinWinner = null;
     let spinBackupState = null;
@@ -1853,6 +1877,11 @@ out center;
       return out;
     }
     function serializeSessionState(state) {
+      try {
+        window.location.hash = "#" + btoa(JSON.stringify(state));
+        if (state && state.sessionId) safeStorageSet(`session_${state.sessionId}_state`, JSON.stringify(state));
+        return true;
+      } catch (e) { return false; }
       try { window.location.hash = "#" + btoa(JSON.stringify(state)); return true; } catch (e) { return false; }
     }
     function parseSessionHash() {
@@ -2391,6 +2420,7 @@ out center;
       if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
       if (sessionHostStartTimer) { clearTimeout(sessionHostStartTimer); sessionHostStartTimer = null; }
       if (joinWaitTimer) { clearInterval(joinWaitTimer); joinWaitTimer = null; }
+      if (joinRequestPollTimer) { clearInterval(joinRequestPollTimer); joinRequestPollTimer = null; }
       if (likeSyncTimer) { clearInterval(likeSyncTimer); likeSyncTimer = null; }
       map.off("click", onPlaceClick);
       people.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
@@ -2430,6 +2460,7 @@ out center;
         '<span class="legend-sep" aria-hidden="true">·</span>' +
         '<span class="legend-hint">Tap a venue to compare</span>';
       document.getElementById("setupStepNames").classList.add("hidden");
+      document.getElementById("setupStepRoom").classList.add("hidden");
       document.getElementById("setupStepCount").classList.remove("hidden");
       document.getElementById("setupOverlay").classList.remove("hidden");
       document.getElementById("placeHint").classList.add("hidden");
@@ -2823,6 +2854,21 @@ out center;
       setTimeout(() => t.classList.remove("show"), 2600);
     }
 
+    function closeShareModal(startNow) {
+      if (shareModalEl) shareModalEl.classList.add("hidden");
+      if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
+      if (sessionHostStartTimer) { clearTimeout(sessionHostStartTimer); sessionHostStartTimer = null; }
+      if (joinRequestPollTimer) { clearInterval(joinRequestPollTimer); joinRequestPollTimer = null; }
+      if (startNow && typeof shareStartCallback === "function") {
+        const cb = shareStartCallback;
+        shareStartCallback = null;
+        shareSessionMode = "standard";
+        cb();
+      }
+    }
+
+    function openShareModal(state, onStart, mode) {
+      shareSessionMode = mode || "standard";
     function closeShareModal() {
       if (shareModalEl) shareModalEl.classList.add("hidden");
       if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
@@ -2842,6 +2888,21 @@ out center;
             <button type="button" id="btnCopySession">Copy link</button>
           </div>
           <div class="share-joined" id="shareJoinedCount">1 / 4 joined</div>
+          <div class="share-joined hidden" id="sharePendingWrap"></div>
+          <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>
+        </div>`;
+        document.body.appendChild(shareModalEl);
+        shareModalEl.addEventListener("click", (e) => { if (e.target === shareModalEl) closeShareModal(true); });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && shareModalEl && !shareModalEl.classList.contains("hidden")) closeShareModal(true);
+          if (e.key === "Escape" && spinOverlayEl && !spinOverlayEl.classList.contains("hidden")) spinOverlayEl.classList.add("hidden");
+        });
+      }
+      shareStartCallback = onStart;
+      shareModalEl.classList.remove("hidden");
+      const input = document.getElementById("shareUrlInput");
+      const joined = document.getElementById("shareJoinedCount");
+      const pendingWrap = document.getElementById("sharePendingWrap");
           <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>
         </div>`;
         document.body.appendChild(shareModalEl);
@@ -2862,6 +2923,70 @@ out center;
           try { n = Math.max(n, (JSON.parse(raw) || []).length); } catch (e) {}
         }
         if (joined) joined.textContent = `${n} / 4 joined`;
+        if (shareSessionMode === "standard" && n >= 4) {
+          closeShareModal(true);
+        }
+      };
+      const updatePending = () => {
+        if (!pendingWrap) return;
+        if (shareSessionMode !== "room") {
+          pendingWrap.classList.add("hidden");
+          pendingWrap.innerHTML = "";
+          return;
+        }
+        const raw = safeStorageGet(`session_${state.sessionId}_requests`);
+        let requests = [];
+        if (raw) {
+          try { requests = JSON.parse(raw) || []; } catch (e) {}
+        }
+        requests = requests.filter(r => r && !r.accepted && !r.rejected);
+        if (!requests.length) {
+          pendingWrap.classList.remove("hidden");
+          pendingWrap.innerHTML = "No pending join requests.";
+          return;
+        }
+        pendingWrap.classList.remove("hidden");
+        pendingWrap.innerHTML = requests.map((r, idx) => (
+          `<div style=\"display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.35rem\">
+             <span>${escapeHtml(r.name)} · PIN ${escapeHtml(r.pincode || "")}</span>
+             <button type=\"button\" data-allow-idx=\"${idx}\">Allow</button>
+           </div>`
+        )).join("");
+        pendingWrap.querySelectorAll("[data-allow-idx]").forEach(btn => {
+          btn.onclick = () => {
+            const i = parseInt(btn.getAttribute("data-allow-idx") || "-1", 10);
+            if (i < 0 || !requests[i]) return;
+            if ((state.people || []).length >= 4) {
+              showToast("Room is full");
+              return;
+            }
+            const req = requests[i];
+            state.people.push({ name: req.name, pincode: req.pincode, lat: req.lat, lng: req.lng });
+            state.locked = state.people.length >= 4;
+            req.accepted = true;
+            safeStorageSet(`session_${state.sessionId}_requests`, JSON.stringify(requests));
+            safeStorageSet(`session_${state.sessionId}_peers`, JSON.stringify(state.people));
+            serializeSessionState(state);
+            updateJoined();
+            updatePending();
+          };
+        });
+      };
+      updateJoined();
+      sessionPeerTimer = setInterval(updateJoined, 2000);
+      if (shareSessionMode === "room") {
+        updatePending();
+        if (joinRequestPollTimer) clearInterval(joinRequestPollTimer);
+        joinRequestPollTimer = setInterval(updatePending, 2000);
+      } else {
+        sessionHostStartTimer = setTimeout(() => {
+          closeShareModal(true);
+        }, 90000);
+      }
+      document.getElementById("btnCopySession").onclick = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
+      };
+      document.getElementById("btnStartNow").onclick = () => { closeShareModal(true); };
         if (n >= 4) {
           closeShareModal();
           onStart();
@@ -3047,6 +3172,35 @@ out center;
         try {
           const geo = await geocodeIndianPincode(pin);
           currentUserName = nm;
+          const reqKey = `session_${sessionId}_requests`;
+          const reqRaw = safeStorageGet(reqKey);
+          let requests = [];
+          if (reqRaw) {
+            try { requests = JSON.parse(reqRaw) || []; } catch (e) {}
+          }
+          requests.push({
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name: nm,
+            pincode: geo.pincode,
+            lat: geo.lat,
+            lng: geo.lng,
+            accepted: false,
+            rejected: false
+          });
+          safeStorageSet(reqKey, JSON.stringify(requests));
+          st.textContent = "Request sent. Waiting for host approval…";
+          if (joinWaitTimer) clearInterval(joinWaitTimer);
+          joinWaitTimer = setInterval(() => {
+            let next = parseSessionHash();
+            if (!next || !next.started) {
+              const stored = safeStorageGet(`session_${sessionId}_state`);
+              if (stored) {
+                try { next = JSON.parse(stored); } catch (e) {}
+              }
+            }
+            const acceptedInPeople = !!next && Array.isArray(next.people) && next.people.some(p => p && p.name === nm && p.pincode === geo.pincode);
+            if (!acceptedInPeople) return;
+            if (!next.started) return;
           sessionState.people.push({ name: nm, pincode: geo.pincode, lat: geo.lat, lng: geo.lng });
           if (sessionState.people.length >= 4) sessionState.locked = true;
           serializeSessionState(sessionState);
@@ -3072,6 +3226,52 @@ out center;
     }
 
     // ── Onboarding ──
+    document.getElementById("btnCreateRoomMode").addEventListener("click", () => {
+      document.getElementById("setupStepCount").classList.add("hidden");
+      document.getElementById("setupStepNames").classList.add("hidden");
+      document.getElementById("setupStepRoom").classList.remove("hidden");
+      const err = document.getElementById("roomCreateError");
+      const st = document.getElementById("roomCreateStatus");
+      if (err) { err.classList.add("hidden"); err.textContent = ""; }
+      if (st) { st.classList.add("hidden"); st.textContent = ""; }
+      document.getElementById("roomHostName").focus();
+    });
+    document.getElementById("btnRoomBack").addEventListener("click", () => {
+      document.getElementById("setupStepRoom").classList.add("hidden");
+      document.getElementById("setupStepCount").classList.remove("hidden");
+    });
+    document.getElementById("btnCreateRoomNow").addEventListener("click", async () => {
+      const nm = (document.getElementById("roomHostName").value || "").trim() || "Host";
+      const pin = (document.getElementById("roomHostPin").value || "").trim();
+      const err = document.getElementById("roomCreateError");
+      const st = document.getElementById("roomCreateStatus");
+      err.classList.add("hidden");
+      st.classList.remove("hidden");
+      st.textContent = `Looking up PIN for ${nm}…`;
+      try {
+        const geo = await geocodeIndianPincode(pin);
+        people = [{ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode, marker: null }];
+        currentUserName = nm;
+        sessionId = randomSessionId();
+        sessionState = {
+          hostName: nm,
+          sessionId,
+          people: [{ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode }],
+          locked: false,
+          started: false
+        };
+        serializeSessionState(sessionState);
+        safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
+        safeStorageSet(`session_${sessionId}_requests`, JSON.stringify([]));
+        document.getElementById("setupOverlay").classList.add("hidden");
+        openShareModal(sessionState, () => { void completeSetup(); }, "room");
+      } catch (e) {
+        st.classList.add("hidden");
+        err.textContent = (e && e.message) || "Could not create room.";
+        err.classList.remove("hidden");
+      }
+    });
+
     document.getElementById("btnCountNext").addEventListener("click", () => {
       let n = parseInt(document.getElementById("inputCount").value, 10);
       if (Number.isNaN(n)) n = 2;
