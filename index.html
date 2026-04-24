@@ -1847,7 +1847,6 @@ out center;
     let currentUserName = "";
     let sessionId = "";
     let sessionState = null;
-    // Session/share timers and overlay state.
     let sessionPeerTimer = null;
     let sessionHostStartTimer = null;
     let joinWaitTimer = null;
@@ -1889,6 +1888,7 @@ out center;
         if (state && state.sessionId) safeStorageSet(`session_${state.sessionId}_state`, JSON.stringify(state));
         return true;
       } catch (e) { return false; }
+      try { window.location.hash = "#" + btoa(JSON.stringify(state)); return true; } catch (e) { return false; }
     }
     function parseSessionHash() {
       const raw = (window.location.hash || "").replace(/^#/, "").trim();
@@ -2860,41 +2860,6 @@ out center;
       setTimeout(() => t.classList.remove("show"), 2600);
     }
 
-    function shareModalMarkup() {
-      return [
-        '<div class="plan-loader-card" role="dialog" aria-modal="true" aria-labelledby="shareTitle">',
-        '  <div class="plan-loader-title" id="shareTitle">Share this meetup link</div>',
-        '  <div class="plan-loader-msg">Anyone with this link can join (up to 4 people).</div>',
-        '  <div class="share-url-row">',
-        '    <input id="shareUrlInput" type="text" readonly />',
-        '    <button type="button" id="btnCopySession">Copy link</button>',
-        "  </div>",
-        '  <div class="share-joined" id="shareJoinedCount">1 / 4 joined</div>',
-        '  <div class="share-joined hidden" id="sharePendingWrap"></div>',
-        '  <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>',
-        '</div>'
-      ].join("");
-    }
-
-    function parseStoredList(raw) {
-      if (!raw) return [];
-      try {
-        const out = JSON.parse(raw);
-        return Array.isArray(out) ? out : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function renderPendingRequestsHtml(requests) {
-      return requests.map((r, idx) =>
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.35rem">' +
-          '<span>' + escapeHtml(r.name) + ' · PIN ' + escapeHtml(r.pincode || "") + '</span>' +
-          '<button type="button" data-allow-idx="' + idx + '">Allow</button>' +
-        '</div>'
-      ).join("");
-    }
-
     function closeShareModal(startNow) {
       if (shareModalEl) shareModalEl.classList.add("hidden");
       if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
@@ -2910,11 +2875,28 @@ out center;
 
     function openShareModal(state, onStart, mode) {
       shareSessionMode = mode || "standard";
+    function closeShareModal() {
+      if (shareModalEl) shareModalEl.classList.add("hidden");
+      if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
+      if (sessionHostStartTimer) { clearTimeout(sessionHostStartTimer); sessionHostStartTimer = null; }
+    }
+
+    function openShareModal(state, onStart) {
       if (!shareModalEl) {
         shareModalEl = document.createElement("div");
         shareModalEl.id = "shareModal";
         shareModalEl.className = "share-modal hidden";
-        shareModalEl.innerHTML = shareModalMarkup();
+        shareModalEl.innerHTML = `<div class="plan-loader-card" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+          <div class="plan-loader-title" id="shareTitle">Share this meetup link</div>
+          <div class="plan-loader-msg">Anyone with this link can join (up to 4 people).</div>
+          <div class="share-url-row">
+            <input id="shareUrlInput" type="text" readonly />
+            <button type="button" id="btnCopySession">Copy link</button>
+          </div>
+          <div class="share-joined" id="shareJoinedCount">1 / 4 joined</div>
+          <div class="share-joined hidden" id="sharePendingWrap"></div>
+          <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>
+        </div>`;
         document.body.appendChild(shareModalEl);
         shareModalEl.addEventListener("click", (e) => { if (e.target === shareModalEl) closeShareModal(true); });
         document.addEventListener("keydown", (e) => {
@@ -2927,11 +2909,25 @@ out center;
       const input = document.getElementById("shareUrlInput");
       const joined = document.getElementById("shareJoinedCount");
       const pendingWrap = document.getElementById("sharePendingWrap");
+          <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>
+        </div>`;
+        document.body.appendChild(shareModalEl);
+        shareModalEl.addEventListener("click", (e) => { if (e.target === shareModalEl) closeShareModal(); });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && shareModalEl && !shareModalEl.classList.contains("hidden")) closeShareModal();
+          if (e.key === "Escape" && spinOverlayEl && !spinOverlayEl.classList.contains("hidden")) spinOverlayEl.classList.add("hidden");
+        });
+      }
+      shareModalEl.classList.remove("hidden");
+      const input = document.getElementById("shareUrlInput");
+      const joined = document.getElementById("shareJoinedCount");
       if (input) input.value = window.location.href;
       const updateJoined = () => {
         let n = state.people.length;
         const raw = safeStorageGet(`session_${state.sessionId}_peers`);
-        n = Math.max(n, parseStoredList(raw).length);
+        if (raw) {
+          try { n = Math.max(n, (JSON.parse(raw) || []).length); } catch (e) {}
+        }
         if (joined) joined.textContent = `${n} / 4 joined`;
         if (shareSessionMode === "standard" && n >= 4) {
           closeShareModal(true);
@@ -2945,7 +2941,10 @@ out center;
           return;
         }
         const raw = safeStorageGet(`session_${state.sessionId}_requests`);
-        let requests = parseStoredList(raw);
+        let requests = [];
+        if (raw) {
+          try { requests = JSON.parse(raw) || []; } catch (e) {}
+        }
         requests = requests.filter(r => r && !r.accepted && !r.rejected);
         if (!requests.length) {
           pendingWrap.classList.remove("hidden");
@@ -2953,7 +2952,12 @@ out center;
           return;
         }
         pendingWrap.classList.remove("hidden");
-        pendingWrap.innerHTML = renderPendingRequestsHtml(requests);
+        pendingWrap.innerHTML = requests.map((r, idx) => (
+          `<div style=\"display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.35rem\">
+             <span>${escapeHtml(r.name)} · PIN ${escapeHtml(r.pincode || "")}</span>
+             <button type=\"button\" data-allow-idx=\"${idx}\">Allow</button>
+           </div>`
+        )).join("");
         pendingWrap.querySelectorAll("[data-allow-idx]").forEach(btn => {
           btn.onclick = () => {
             const i = parseInt(btn.getAttribute("data-allow-idx") || "-1", 10);
@@ -2989,6 +2993,21 @@ out center;
         navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
       };
       document.getElementById("btnStartNow").onclick = () => { closeShareModal(true); };
+        if (n >= 4) {
+          closeShareModal();
+          onStart();
+        }
+      };
+      updateJoined();
+      sessionPeerTimer = setInterval(updateJoined, 2000);
+      sessionHostStartTimer = setTimeout(() => {
+        closeShareModal();
+        onStart();
+      }, 90000);
+      document.getElementById("btnCopySession").onclick = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
+      };
+      document.getElementById("btnStartNow").onclick = () => { closeShareModal(); onStart(); };
     }
 
     function ensureSpinOverlay() {
@@ -3188,6 +3207,15 @@ out center;
             const acceptedInPeople = !!next && Array.isArray(next.people) && next.people.some(p => p && p.name === nm && p.pincode === geo.pincode);
             if (!acceptedInPeople) return;
             if (!next.started) return;
+          sessionState.people.push({ name: nm, pincode: geo.pincode, lat: geo.lat, lng: geo.lng });
+          if (sessionState.people.length >= 4) sessionState.locked = true;
+          serializeSessionState(sessionState);
+          safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
+          st.textContent = "You're in! Waiting for host…";
+          if (joinWaitTimer) clearInterval(joinWaitTimer);
+          joinWaitTimer = setInterval(() => {
+            const next = parseSessionHash();
+            if (!next || !next.started) return;
             clearInterval(joinWaitTimer);
             joinWaitTimer = null;
             people = (next.people || []).map(p => ({ name: p.name, pincode: p.pincode, lat: p.lat, lng: p.lng, marker: null }));
