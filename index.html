@@ -1706,7 +1706,13 @@
       const q = encodeURIComponent(digits + " India");
       const res = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=5`);
       if (!res.ok) throw new Error("Could not reach the lookup service. Try again or use the map.");
-      const data = await res.json();
+      let data;
+      try {
+        const raw = await res.text();
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error("Lookup service returned an invalid response. Please try again.");
+      }
       const feat = pickPhotonFeature(data.features || [], digits);
       if (!feat || !feat.geometry || !Array.isArray(feat.geometry.coordinates)) {
         throw new Error(`No location found for PIN ${digits}. Check the code or use the map.`);
