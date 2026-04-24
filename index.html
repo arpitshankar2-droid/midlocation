@@ -1142,6 +1142,161 @@
       from { background-position: 200% 0; }
       to { background-position: -20% 0; }
     }
+
+    /* --- New feature styles: session share, spin host, likes --- */
+    .share-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2400;
+      background: rgba(2,6,12,0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .share-modal.hidden { display: none; }
+    .share-url-row { display: flex; gap: 0.5rem; margin-top: 0.55rem; }
+    .share-url-row input {
+      flex: 1;
+      min-width: 0;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(8,12,20,0.85);
+      color: var(--text);
+      padding: 0.5rem 0.6rem;
+      font-size: 0.72rem;
+    }
+    .share-joined { margin-top: 0.55rem; color: #bfdbfe; font-size: 0.72rem; }
+    .share-actions { margin-top: 0.7rem; display: flex; gap: 0.45rem; justify-content: center; }
+    .share-actions button {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(56,189,248,0.12);
+      color: #bae6fd;
+      padding: 0.42rem 0.6rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .spin-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2380;
+      background: rgba(2,6,12,0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .spin-overlay.hidden { display: none; }
+    .spin-card {
+      width: min(94vw, 420px);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.5);
+      text-align: center;
+      position: relative;
+    }
+    .spin-pointer {
+      width: 0;
+      height: 0;
+      border-left: 11px solid transparent;
+      border-right: 11px solid transparent;
+      border-top: 16px solid #e2e8f0;
+      margin: 0 auto -6px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+      position: relative;
+      z-index: 2;
+    }
+    .spin-wheel-wrap {
+      position: relative;
+      width: min(80vw, 340px);
+      height: min(80vw, 340px);
+      margin: 0.2rem auto 0.7rem;
+    }
+    .spin-wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(148,163,184,0.34);
+      position: relative;
+      transform: rotate(0deg);
+      will-change: transform;
+    }
+    .spin-initial {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      pointer-events: none;
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: #f8fafc;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+    }
+    .spin-initial > span { transform: translateY(12%); }
+    .spin-sub { color: var(--muted); font-size: 0.7rem; margin-top: 0.35rem; }
+    .spin-result { margin-top: 0.5rem; font-weight: 700; }
+    .spin-actions { margin-top: 0.55rem; display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; }
+    .spin-actions button {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(56,189,248,0.12);
+      color: #bae6fd;
+      padding: 0.44rem 0.64rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .host-spin-banner {
+      margin-bottom: 0.55rem;
+      padding: 0.5rem 0.58rem;
+      border-radius: 10px;
+      background: rgba(56,189,248,0.1);
+      border: 1px solid rgba(56,189,248,0.24);
+      color: #bae6fd;
+      font-size: 0.68rem;
+      display: flex;
+      gap: 0.35rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .host-spin-banner button {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(148,163,184,0.14);
+      color: #dbeafe;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.62rem;
+      cursor: pointer;
+    }
+    .btn-like {
+      min-height: 44px;
+      min-width: 70px;
+      background: rgba(148,163,184,0.1);
+      color: var(--muted);
+    }
+    .btn-like.liked {
+      background: rgba(251,113,133,0.15);
+      color: #fda4af;
+      border: 1px solid rgba(251,113,133,0.25);
+    }
+    .crowd-pick-badge {
+      background: rgba(251,191,36,0.15);
+      color: #fcd34d;
+      border: 1px solid rgba(251,191,36,0.25);
+      font-size: 0.58rem;
+      padding: 0.18rem 0.42rem;
+      border-radius: 999px;
+      flex-shrink: 0;
+      margin-right: 0.3rem;
+    }
+
   </style>
 </head>
 <body>
@@ -1153,10 +1308,31 @@
       <p class="setup-lead">How many people are joining? Next you’ll enter each person’s name and <strong>India PIN code</strong> (we look up a central point for that PIN). We rank hangout spots by <strong>least total travel</strong> (sum of crow‑flies km).</p>
       <div class="setup-field">
         <label for="inputCount">Number of people</label>
-        <input id="inputCount" type="number" inputmode="numeric" min="2" max="8" value="2" />
+        <input id="inputCount" type="number" inputmode="numeric" min="2" max="4" value="2" />
       </div>
       <div class="setup-actions">
         <button type="button" class="primary" id="btnCountNext">Continue</button>
+        <button type="button" id="btnCreateRoomMode">Create room</button>
+      </div>
+    </div>
+    <div class="setup-card hidden" id="setupStepRoom">
+      <h2>Create room</h2>
+      <p class="setup-lead">Start a shared room with your name and India PIN. Share the link, then allow join requests.</p>
+      <div class="setup-field">
+        <label for="roomHostName">Your name</label>
+        <input id="roomHostName" type="text" autocomplete="nickname" maxlength="40" placeholder="Name" />
+      </div>
+      <div class="setup-field">
+        <label for="roomHostPin">PIN</label>
+        <input id="roomHostPin" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="6" placeholder="110001" />
+      </div>
+      <p class="setup-geocode-status hidden" id="roomCreateStatus" aria-live="polite"></p>
+      <p class="setup-error hidden" id="roomCreateError" role="alert"></p>
+      <div class="setup-actions">
+        <button type="button" id="btnRoomBack" class="back-icon" aria-label="Go back" title="Back">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        </button>
+        <button type="button" class="primary" id="btnCreateRoomNow">Create room link</button>
       </div>
     </div>
     <div class="setup-card hidden" id="setupStepNames">
@@ -1235,6 +1411,7 @@
         </button>
         <button class="panel-btn group" id="btnGroup" type="button">Group</button>
         <button class="panel-btn share" id="btnShare" type="button">📋 Share</button>
+        <button class="panel-btn group" id="btnSpin" type="button">📍 Pick a host</button>
         <button class="panel-btn fit" id="btnFit" type="button">Fit map</button>
       </div>
     </div>
@@ -1529,7 +1706,13 @@
       const q = encodeURIComponent(digits + " India");
       const res = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=5`);
       if (!res.ok) throw new Error("Could not reach the lookup service. Try again or use the map.");
-      const data = await res.json();
+      let data;
+      try {
+        const raw = await res.text();
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error("Lookup service returned an invalid response. Please try again.");
+      }
       const feat = pickPhotonFeature(data.features || [], digits);
       if (!feat || !feat.geometry || !Array.isArray(feat.geometry.coordinates)) {
         throw new Error(`No location found for PIN ${digits}. Check the code or use the map.`);
@@ -1661,12 +1844,64 @@ out center;
     let listVisibleLimit = LIST_PAGE_SIZE;
     let lastListScopeKey = "";
     let mobilePanelInitDone = false;
+    let currentUserName = "";
+    let sessionId = "";
+    let sessionState = null;
+    // Session/share timers and overlay state.
+    let sessionPeerTimer = null;
+    let sessionHostStartTimer = null;
+    let joinWaitTimer = null;
+    let likeSyncTimer = null;
+    let shareModalEl = null;
+    let shareStartCallback = null;
+    let shareSessionMode = "standard";
+    let joinRequestPollTimer = null;
+    let spinOverlayEl = null;
+    let spinWinner = null;
+    let spinBackupState = null;
+    let spinHostMarker = null;
+    let venueLikes = {};
+    let likeWinner = null;
     const PLAN_MESSAGES = [
       "Finding optimal route for the meetup…",
       "Balancing travel time for everyone…",
       "Finding best date places near midpoint…",
       "Shortlisting cafes, malls and fun spots…"
     ];
+
+    function safeStorageSet(key, value) {
+      try { localStorage.setItem(key, value); return true; }
+      catch (e) { showToast("Live sync unavailable in private mode"); return false; }
+    }
+    function safeStorageGet(key) {
+      try { return localStorage.getItem(key); }
+      catch (e) { showToast("Live sync unavailable in private mode"); return null; }
+    }
+    function randomSessionId() {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let out = "";
+      for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+    function serializeSessionState(state) {
+      try {
+        window.location.hash = "#" + btoa(JSON.stringify(state));
+        if (state && state.sessionId) safeStorageSet(`session_${state.sessionId}_state`, JSON.stringify(state));
+        return true;
+      } catch (e) { return false; }
+    }
+    function parseSessionHash() {
+      const raw = (window.location.hash || "").replace(/^#/, "").trim();
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(atob(raw));
+        if (!parsed || !Array.isArray(parsed.people)) return null;
+        return parsed;
+      } catch (e) { return null; }
+    }
+    function venueKeyFor(v) {
+      return `${v.name}|${v.lat.toFixed(4)}|${v.lng.toFixed(4)}`;
+    }
 
     function setFairnessUI(spotLabel, dists) {
       const names = people.map(p => p.name);
@@ -1905,6 +2140,18 @@ out center;
       });
     }
 
+    function hostPersonIcon(label) {
+      const txt = (label || "?").toString().trim().slice(0, 1).toUpperCase();
+      return L.divIcon({
+        className: "leaflet-div-icon",
+        html: `<div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+               background:rgba(8,12,20,0.92);border:3px solid #38bdf8;border-radius:50%;
+               box-shadow:0 3px 18px rgba(0,0,0,.6);font-size:15px;font-weight:800;color:#fff;z-index:900" aria-hidden="true">${txt}
+               <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:rgba(56,189,248,0.18);color:#7dd3fc;border:1px solid rgba(56,189,248,0.35);font-size:9px;font-weight:700;letter-spacing:0.06em;padding:1px 6px;border-radius:999px;white-space:nowrap;text-transform:lowercase">hosting</div></div>`,
+        iconSize: [38,38], iconAnchor: [19,19]
+      });
+    }
+
     const midIcon = L.divIcon({
       className: "leaflet-div-icon",
       html: `<div class="mid-pulse-dot"></div>`,
@@ -1930,12 +2177,14 @@ out center;
       return { sym:"place", border:"#64748b", fg:"#94a3b8" };
     }
 
-    function venueIcon(v) {
+    function venueIcon(v, isTopPick) {
       const p = venuePinStyle(v);
+      const borderW = isTopPick ? 3 : 2;
+      const borderC = isTopPick ? "rgba(251,191,36,0.6)" : p.border;
       return L.divIcon({
         className: "leaflet-div-icon",
         html: `<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
-               justify-content:center;background:rgba(8,12,20,0.92);border:2px solid ${p.border};
+               justify-content:center;background:rgba(8,12,20,0.92);border:${borderW}px solid ${borderC};
                box-shadow:0 2px 14px rgba(0,0,0,.55)">
                <span class="material-symbols-outlined" style="font-size:20px;color:${p.fg};
                font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24">${p.sym}</span></div>`,
@@ -1979,6 +2228,38 @@ out center;
       vMarkers = [];
     }
 
+    function rebuildVenueMarkersFromDiscovered() {
+      clearVenueMarkers();
+      vMarkers = discoveredVenues.map(v => {
+        const dists = distsToVenue(v);
+        const sumKm = sum(dists);
+        const centerKmDist = haversineKm(meetCenter.lat, meetCenter.lng, v.lat, v.lng);
+        const centerKmTime = timeCenter ? haversineKm(timeCenter.lat, timeCenter.lng, v.lat, v.lng) : Number.POSITIVE_INFINITY;
+        const key = venueKeyFor(v);
+        const mk = L.marker([v.lat, v.lng], { icon: venueIcon(v, likeWinner === key) }).addTo(map);
+        const row = { marker: mk, v, dists, sumKm, centerKmDist, centerKmTime, key };
+        mk.bindPopup(popupFor(v, dists, centerKmDist, centerKmTime));
+        mk.on("popupopen", () => {
+          const el = mk.getPopup() && mk.getPopup().getElement();
+          if (!el) return;
+          const btn = el.querySelector(".popup-copy");
+          if (!btn || btn.dataset.bound === "1") return;
+          btn.dataset.bound = "1";
+          btn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            copyVenueAddress(v);
+          });
+        });
+        mk.on("click", () => {
+          selectedVenueRow = row;
+          setFairnessUI(v.name, dists);
+        });
+        return row;
+      });
+      refreshLikeUI();
+    }
+
     async function refreshDiscoveredVenues() {
       if (!meetCenter) return;
       document.getElementById("panelTitle").textContent = `Finding places within ${venueRadiusKm} km...`;
@@ -2004,36 +2285,16 @@ out center;
         showToast("Could not fetch places right now. Try again.");
       }
 
-      clearVenueMarkers();
-      vMarkers = discoveredVenues.map(v => {
-        const dists = distsToVenue(v);
-        const sumKm = sum(dists);
-        const centerKmDist = haversineKm(meetCenter.lat, meetCenter.lng, v.lat, v.lng);
-        const centerKmTime = timeCenter ? haversineKm(timeCenter.lat, timeCenter.lng, v.lat, v.lng) : Number.POSITIVE_INFINITY;
-        const mk = L.marker([v.lat, v.lng], { icon: venueIcon(v) }).addTo(map);
-        const row = { marker: mk, v, dists, sumKm, centerKmDist, centerKmTime };
-        mk.bindPopup(popupFor(v, dists, centerKmDist, centerKmTime));
-        mk.on("popupopen", () => {
-          const el = mk.getPopup() && mk.getPopup().getElement();
-          if (!el) return;
-          const btn = el.querySelector(".popup-copy");
-          if (!btn || btn.dataset.bound === "1") return;
-          btn.dataset.bound = "1";
-          btn.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            copyVenueAddress(v);
-          });
-        });
-        mk.on("click", () => {
-          selectedVenueRow = row;
-          setFairnessUI(v.name, dists);
-        });
-        return row;
-      });
+      rebuildVenueMarkersFromDiscovered();
     }
 
     async function completeSetup() {
+      if (sessionState && !sessionState.started) {
+        sessionState.started = true;
+        sessionState.people = people.map(p => ({ name: p.name, pincode: p.pincode || "", lat: p.lat, lng: p.lng }));
+        sessionState.locked = sessionState.people.length >= 4;
+        serializeSessionState(sessionState);
+      }
       startPlanLoader("Finding optimal route for the meetup…");
       try {
       await new Promise(resolve => setTimeout(() => {
@@ -2111,6 +2372,23 @@ out center;
       document.body.classList.add("setup-done");
 
       applyFilter();
+      if (likeSyncTimer) clearInterval(likeSyncTimer);
+      if (sessionId) {
+        likeSyncTimer = setInterval(() => {
+          const raw = safeStorageGet(`session_${sessionId}_likes`);
+          if (!raw) return;
+          try {
+            const incoming = JSON.parse(raw);
+            Object.keys(incoming || {}).forEach(key => {
+              const local = new Set(Array.isArray(venueLikes[key]) ? venueLikes[key] : []);
+              (incoming[key] || []).forEach(v => local.add(v));
+              venueLikes[key] = Array.from(local);
+            });
+            refreshLikeUI();
+            checkLikeWinner();
+          } catch (e) {}
+        }, 3000);
+      }
       const b = L.latLngBounds(people.map(p => [p.lat, p.lng]));
       b.extend([meetCenter.lat, meetCenter.lng]);
       if (timeCenter) b.extend([timeCenter.lat, timeCenter.lng]);
@@ -2145,6 +2423,11 @@ out center;
 
     function resetPlanner() {
       document.body.classList.remove("setup-done");
+      if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
+      if (sessionHostStartTimer) { clearTimeout(sessionHostStartTimer); sessionHostStartTimer = null; }
+      if (joinWaitTimer) { clearInterval(joinWaitTimer); joinWaitTimer = null; }
+      if (joinRequestPollTimer) { clearInterval(joinRequestPollTimer); joinRequestPollTimer = null; }
+      if (likeSyncTimer) { clearInterval(likeSyncTimer); likeSyncTimer = null; }
       map.off("click", onPlaceClick);
       people.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
       people = [];
@@ -2156,6 +2439,15 @@ out center;
       vMarkers.forEach(r => { if (map.hasLayer(r.marker)) map.removeLayer(r.marker); });
       vMarkers = [];
       selectedVenueRow = null;
+      spinWinner = null;
+      spinBackupState = null;
+      if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
+      spinHostMarker = null;
+      venueLikes = {};
+      likeWinner = null;
+      currentUserName = "";
+      sessionId = "";
+      sessionState = null;
       meetCenter = null;
       timeCenter = null;
       activeMidMode = "both";
@@ -2174,6 +2466,7 @@ out center;
         '<span class="legend-sep" aria-hidden="true">·</span>' +
         '<span class="legend-hint">Tap a venue to compare</span>';
       document.getElementById("setupStepNames").classList.add("hidden");
+      document.getElementById("setupStepRoom").classList.add("hidden");
       document.getElementById("setupStepCount").classList.remove("hidden");
       document.getElementById("setupOverlay").classList.remove("hidden");
       document.getElementById("placeHint").classList.add("hidden");
@@ -2183,6 +2476,8 @@ out center;
       if (geoSt) { geoSt.textContent = ""; geoSt.classList.add("hidden"); }
       document.getElementById("panelTitle").textContent = "Meet spots";
       document.getElementById("placeList").innerHTML = "";
+      const oldBanner = document.getElementById("spinHostBanner");
+      if (oldBanner) oldBanner.remove();
     }
 
     // ── Filter state ──
@@ -2277,12 +2572,17 @@ out center;
         const catsHtml = (v.cats||[]).map(c =>
           `<span class="cat-pill"><span class="material-symbols-outlined" aria-hidden="true">${CAT_ICONS[c]||'place'}</span>${CAT_LABELS[c]||c}</span>`
         ).join("");
+        const key = venueKeyFor(v);
+        const isTopPick = likeWinner === key;
+        const topPickBadge = isTopPick ? `<span class="crowd-pick-badge" aria-label="Most liked by the group">★ Top pick</span>` : "";
 
         const card = document.createElement("div");
         card.className = "venue-card";
+        card.dataset.venueKey = key;
         card.innerHTML = `
           <div class="cat-tags">${catsHtml}</div>
           <div class="venue-top">
+            ${topPickBadge}
             <h3>${i+1}. ${escapeHtml(v.name)}</h3>
             <span class="vibe-badge ${v.vibe}">${v.vibeLabel}</span>
           </div>
@@ -2296,6 +2596,7 @@ out center;
           <div class="venue-actions">
             <button class="btn-show" type="button">📍 Show on map</button>
             <button class="btn-copy" type="button">📋 Copy address</button>
+            <button class="btn-like" data-venue-key="${escapeHtml(key)}" type="button" aria-pressed="false" aria-label="Like ${escapeHtml(v.name)}">♡ 0</button>
             <a class="btn-dir" href="${mapsUrl(v.lat,v.lng)}" target="_blank" rel="noopener noreferrer">Directions →</a>
           </div>`;
 
@@ -2334,6 +2635,52 @@ out center;
         });
         wrap.appendChild(btn);
         list.appendChild(wrap);
+      }
+      refreshLikeUI();
+    }
+
+    function refreshLikeUI() {
+      const voter = currentUserName || (people[0] && people[0].name) || "";
+      document.querySelectorAll(".btn-like").forEach(btn => {
+        const key = btn.dataset.venueKey || "";
+        const arr = Array.isArray(venueLikes[key]) ? Array.from(new Set(venueLikes[key])) : [];
+        venueLikes[key] = arr;
+        const liked = !!voter && arr.includes(voter);
+        btn.textContent = `${liked ? "♥" : "♡"} ${arr.length}`;
+        btn.setAttribute("aria-pressed", liked ? "true" : "false");
+        btn.classList.toggle("liked", liked);
+      });
+      document.querySelectorAll(".venue-card").forEach(card => {
+        const key = card.dataset.venueKey || "";
+        const top = card.querySelector(".venue-top");
+        if (!top) return;
+        const has = !!top.querySelector(".crowd-pick-badge");
+        const should = likeWinner === key;
+        if (should && !has) {
+          top.insertAdjacentHTML("afterbegin", `<span class="crowd-pick-badge" aria-label="Most liked by the group">★ Top pick</span>`);
+        } else if (!should && has) {
+          const old = top.querySelector(".crowd-pick-badge");
+          if (old) old.remove();
+        }
+      });
+    }
+
+    function checkLikeWinner() {
+      const threshold = Math.ceil((people.length || 1) / 2);
+      let nextWinner = null;
+      Object.keys(venueLikes).some(key => {
+        const voters = Array.isArray(venueLikes[key]) ? Array.from(new Set(venueLikes[key])) : [];
+        venueLikes[key] = voters;
+        if (voters.length >= threshold) { nextWinner = key; return true; }
+        return false;
+      });
+      if (nextWinner === likeWinner) return;
+      likeWinner = nextWinner;
+      vMarkers.forEach(row => row.marker.setIcon(venueIcon(row.v, likeWinner === row.key)));
+      refreshLikeUI();
+      if (likeWinner) {
+        const winnerRow = vMarkers.find(r => r.key === likeWinner);
+        if (winnerRow) showToast(`${winnerRow.v.name} is the crowd favourite!`);
       }
     }
 
@@ -2395,6 +2742,7 @@ out center;
       });
 
       rebuildList(sortedRows);
+      checkLikeWinner();
     }
 
     // ── Filter buttons ──
@@ -2417,6 +2765,23 @@ out center;
       document.getElementById("filterRow").appendChild(btn);
     });
 
+    document.getElementById("placeList").addEventListener("click", (e) => {
+      const likeBtn = e.target.closest(".btn-like");
+      if (!likeBtn) return;
+      e.stopPropagation();
+      const key = likeBtn.dataset.venueKey || "";
+      if (!key) return;
+      const voterName = currentUserName || (people[0] && people[0].name);
+      if (!voterName) return;
+      const set = new Set(Array.isArray(venueLikes[key]) ? venueLikes[key] : []);
+      if (set.has(voterName)) set.delete(voterName);
+      else set.add(voterName);
+      venueLikes[key] = Array.from(set);
+      refreshLikeUI();
+      checkLikeWinner();
+      if (sessionId) safeStorageSet(`session_${sessionId}_likes`, JSON.stringify(venueLikes));
+    });
+
     // ── Fit map ──
     document.getElementById("btnFit").addEventListener("click", () => {
       if (!people.length || !meetCenter) return;
@@ -2430,6 +2795,12 @@ out center;
     document.getElementById("btnGroup").addEventListener("click", () => {
       if (!confirm("Set up the group again? This clears the current map pins.")) return;
       resetPlanner();
+    });
+    document.getElementById("btnSpin").addEventListener("click", () => {
+      if (!document.body.classList.contains("setup-done") || people.length < 2) return;
+      ensureSpinOverlay();
+      spinOverlayEl.classList.remove("hidden");
+      renderSpinWheel();
     });
 
     const panelEl = document.querySelector(".panel");
@@ -2489,6 +2860,244 @@ out center;
       setTimeout(() => t.classList.remove("show"), 2600);
     }
 
+    function shareModalMarkup() {
+      return [
+        '<div class="plan-loader-card" role="dialog" aria-modal="true" aria-labelledby="shareTitle">',
+        '  <div class="plan-loader-title" id="shareTitle">Share this meetup link</div>',
+        '  <div class="plan-loader-msg">Anyone with this link can join (up to 4 people).</div>',
+        '  <div class="share-url-row">',
+        '    <input id="shareUrlInput" type="text" readonly />',
+        '    <button type="button" id="btnCopySession">Copy link</button>',
+        "  </div>",
+        '  <div class="share-joined" id="shareJoinedCount">1 / 4 joined</div>',
+        '  <div class="share-joined hidden" id="sharePendingWrap"></div>',
+        '  <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>',
+        '</div>'
+      ].join("");
+    }
+
+    function parseStoredList(raw) {
+      if (!raw) return [];
+      try {
+        const out = JSON.parse(raw);
+        return Array.isArray(out) ? out : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function renderPendingRequestsHtml(requests) {
+      return requests.map((r, idx) =>
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.35rem">' +
+          '<span>' + escapeHtml(r.name) + ' · PIN ' + escapeHtml(r.pincode || "") + '</span>' +
+          '<button type="button" data-allow-idx="' + idx + '">Allow</button>' +
+        '</div>'
+      ).join("");
+    }
+
+    function closeShareModal(startNow) {
+      if (shareModalEl) shareModalEl.classList.add("hidden");
+      if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
+      if (sessionHostStartTimer) { clearTimeout(sessionHostStartTimer); sessionHostStartTimer = null; }
+      if (joinRequestPollTimer) { clearInterval(joinRequestPollTimer); joinRequestPollTimer = null; }
+      if (startNow && typeof shareStartCallback === "function") {
+        const cb = shareStartCallback;
+        shareStartCallback = null;
+        shareSessionMode = "standard";
+        cb();
+      }
+    }
+
+    function openShareModal(state, onStart, mode) {
+      shareSessionMode = mode || "standard";
+      if (!shareModalEl) {
+        shareModalEl = document.createElement("div");
+        shareModalEl.id = "shareModal";
+        shareModalEl.className = "share-modal hidden";
+        shareModalEl.innerHTML = shareModalMarkup();
+        document.body.appendChild(shareModalEl);
+        shareModalEl.addEventListener("click", (e) => { if (e.target === shareModalEl) closeShareModal(true); });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && shareModalEl && !shareModalEl.classList.contains("hidden")) closeShareModal(true);
+          if (e.key === "Escape" && spinOverlayEl && !spinOverlayEl.classList.contains("hidden")) spinOverlayEl.classList.add("hidden");
+        });
+      }
+      shareStartCallback = onStart;
+      shareModalEl.classList.remove("hidden");
+      const input = document.getElementById("shareUrlInput");
+      const joined = document.getElementById("shareJoinedCount");
+      const pendingWrap = document.getElementById("sharePendingWrap");
+      if (input) input.value = window.location.href;
+      const updateJoined = () => {
+        let n = state.people.length;
+        const raw = safeStorageGet(`session_${state.sessionId}_peers`);
+        n = Math.max(n, parseStoredList(raw).length);
+        if (joined) joined.textContent = `${n} / 4 joined`;
+        if (shareSessionMode === "standard" && n >= 4) {
+          closeShareModal(true);
+        }
+      };
+      const updatePending = () => {
+        if (!pendingWrap) return;
+        if (shareSessionMode !== "room") {
+          pendingWrap.classList.add("hidden");
+          pendingWrap.innerHTML = "";
+          return;
+        }
+        const raw = safeStorageGet(`session_${state.sessionId}_requests`);
+        let requests = parseStoredList(raw);
+        requests = requests.filter(r => r && !r.accepted && !r.rejected);
+        if (!requests.length) {
+          pendingWrap.classList.remove("hidden");
+          pendingWrap.innerHTML = "No pending join requests.";
+          return;
+        }
+        pendingWrap.classList.remove("hidden");
+        pendingWrap.innerHTML = renderPendingRequestsHtml(requests);
+        pendingWrap.querySelectorAll("[data-allow-idx]").forEach(btn => {
+          btn.onclick = () => {
+            const i = parseInt(btn.getAttribute("data-allow-idx") || "-1", 10);
+            if (i < 0 || !requests[i]) return;
+            if ((state.people || []).length >= 4) {
+              showToast("Room is full");
+              return;
+            }
+            const req = requests[i];
+            state.people.push({ name: req.name, pincode: req.pincode, lat: req.lat, lng: req.lng });
+            state.locked = state.people.length >= 4;
+            req.accepted = true;
+            safeStorageSet(`session_${state.sessionId}_requests`, JSON.stringify(requests));
+            safeStorageSet(`session_${state.sessionId}_peers`, JSON.stringify(state.people));
+            serializeSessionState(state);
+            updateJoined();
+            updatePending();
+          };
+        });
+      };
+      updateJoined();
+      sessionPeerTimer = setInterval(updateJoined, 2000);
+      if (shareSessionMode === "room") {
+        updatePending();
+        if (joinRequestPollTimer) clearInterval(joinRequestPollTimer);
+        joinRequestPollTimer = setInterval(updatePending, 2000);
+      } else {
+        sessionHostStartTimer = setTimeout(() => {
+          closeShareModal(true);
+        }, 90000);
+      }
+      document.getElementById("btnCopySession").onclick = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
+      };
+      document.getElementById("btnStartNow").onclick = () => { closeShareModal(true); };
+    }
+
+    function ensureSpinOverlay() {
+      if (spinOverlayEl) return;
+      spinOverlayEl = document.createElement("div");
+      spinOverlayEl.id = "spinOverlay";
+      spinOverlayEl.className = "spin-overlay hidden";
+      spinOverlayEl.setAttribute("role", "dialog");
+      spinOverlayEl.setAttribute("aria-modal", "true");
+      spinOverlayEl.setAttribute("aria-labelledby", "spinTitle");
+      spinOverlayEl.innerHTML = `<div class="spin-card">
+        <h3 id="spinTitle">Pick a host</h3>
+        <div class="spin-pointer" aria-hidden="true"></div>
+        <div class="spin-wheel-wrap"><div class="spin-wheel" id="spinWheel"></div></div>
+        <div class="spin-result" id="spinResult"></div>
+        <div class="spin-sub" id="spinSub"></div>
+        <div class="spin-actions"><button type="button" id="btnDoSpin">Spin!</button></div>
+      </div>`;
+      document.body.appendChild(spinOverlayEl);
+      spinOverlayEl.addEventListener("click", (e) => { if (e.target === spinOverlayEl) spinOverlayEl.classList.add("hidden"); });
+    }
+
+    function renderSpinWheel() {
+      ensureSpinOverlay();
+      const wheel = document.getElementById("spinWheel");
+      if (!wheel || !people.length) return;
+      const segDeg = 360 / people.length;
+      const stops = people.map((_, i) => {
+        const c = PERSON_COLORS[i % PERSON_COLORS.length];
+        const s = (i * segDeg).toFixed(2);
+        const e = ((i + 1) * segDeg).toFixed(2);
+        return `${c} ${s}deg ${e}deg`;
+      }).join(",");
+      wheel.style.background = `conic-gradient(${stops})`;
+      wheel.style.transform = "rotate(0deg)";
+      wheel.style.transition = "none";
+      wheel.innerHTML = people.map((p, i) => {
+        const mid = i * segDeg + segDeg / 2;
+        return `<div class="spin-initial" style="transform:rotate(${mid}deg)"><span>${escapeHtml((p.name||"?").slice(0,1).toUpperCase())}</span></div>`;
+      }).join("");
+      document.getElementById("spinResult").textContent = "";
+      document.getElementById("spinSub").textContent = "";
+      const actions = spinOverlayEl.querySelector(".spin-actions");
+      actions.innerHTML = `<button type="button" id="btnDoSpin">Spin!</button>`;
+      document.getElementById("btnDoSpin").onclick = () => {
+        const winner = Math.floor(Math.random() * people.length);
+        const winnerP = people[winner];
+        const winnerCenter = winner * segDeg + segDeg / 2;
+        const targetRotation = 1800 + (360 - winnerCenter);
+        wheel.style.transition = "transform 3s cubic-bezier(0.17,0.67,0.12,0.99)";
+        wheel.style.transform = `rotate(${targetRotation}deg)`;
+        document.getElementById("btnDoSpin").disabled = true;
+        wheel.ontransitionend = () => {
+          spinWinner = { personIndex: winner, person: winnerP };
+          document.getElementById("spinResult").textContent = `${winnerP.name} is hosting today.`;
+          document.getElementById("spinSub").textContent = "Everyone heads to their area.";
+          actions.innerHTML = `<button type="button" id="btnSeeHostSpots">See spots near ${escapeHtml(winnerP.name)}</button><button type="button" id="btnSpinAgain">Spin again</button>`;
+          document.getElementById("btnSeeHostSpots").onclick = () => { spinOverlayEl.classList.add("hidden"); void showSpinVenues(winner); };
+          document.getElementById("btnSpinAgain").onclick = () => renderSpinWheel();
+          showToast(`${winnerP.name} is hosting today.`);
+        };
+      };
+    }
+
+    async function showSpinVenues(personIndex) {
+      const host = people[personIndex];
+      if (!host) return;
+      if (!spinBackupState) {
+        spinBackupState = { discoveredVenues: discoveredVenues.slice(), activeMidMode };
+      }
+      document.getElementById("fairnessContext").textContent = `For: Hosting: ${host.name}`;
+      const spinVenues = await fetchNearbyVenues(host.lat, host.lng, venueRadiusKm);
+      discoveredVenues = spinVenues;
+      rebuildVenueMarkersFromDiscovered();
+      if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
+      if (host.marker && map.hasLayer(host.marker)) map.removeLayer(host.marker);
+      spinHostMarker = L.marker([host.lat, host.lng], { icon: hostPersonIcon(host.name) }).addTo(map);
+      const scroller = document.querySelector(".panel-scroll");
+      const old = document.getElementById("spinHostBanner");
+      if (old) old.remove();
+      if (scroller) {
+        const b = document.createElement("div");
+        b.className = "host-spin-banner";
+        b.id = "spinHostBanner";
+        b.innerHTML = `📍 Spots near ${escapeHtml(host.name)} — they're hosting <button type="button" id="btnClearSpin">Back to midpoint</button>`;
+        scroller.insertBefore(b, document.getElementById("placeList"));
+      }
+      const clearBtn = document.getElementById("btnClearSpin");
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          const banner = document.getElementById("spinHostBanner");
+          if (banner) banner.remove();
+          if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
+          spinHostMarker = null;
+          const col = PERSON_COLORS[personIndex % PERSON_COLORS.length];
+          host.marker = L.marker([host.lat, host.lng], { icon: personNumIcon(host.name, col) }).addTo(map);
+          if (spinBackupState) {
+            discoveredVenues = spinBackupState.discoveredVenues.slice();
+            rebuildVenueMarkersFromDiscovered();
+            spinBackupState = null;
+            applyFilter();
+          } else {
+            applyFilter();
+          }
+        };
+      }
+      applyFilter();
+    }
+
     document.getElementById("btnShare").addEventListener("click", () => {
       const bestRows = vMarkers.filter(matchesRow).sort((a, b) => a.sumKm - b.sumKm);
       if (!bestRows.length) {
@@ -2510,11 +3119,141 @@ out center;
       });
     });
 
+    function enterJoinMode(state) {
+      sessionState = state;
+      sessionId = state.sessionId || "";
+      const overlay = document.getElementById("setupOverlay");
+      const full = state.locked || (state.people || []).length >= 4;
+      overlay.innerHTML = "";
+      const card = document.createElement("div");
+      card.className = "setup-card";
+      if (full) {
+        card.innerHTML = `<h2>Session full</h2><p class="setup-lead">This meetup already has 4 people.</p><div class="setup-actions"><button type="button" id="btnLeaveJoin">Leave</button></div>`;
+        overlay.appendChild(card);
+        document.getElementById("btnLeaveJoin").addEventListener("click", () => {
+          window.location.hash = "";
+          window.location.reload();
+        });
+        return;
+      }
+      card.innerHTML = `<h2>Join ${escapeHtml(state.hostName || "host")}'s meetup</h2>
+        <p class="setup-lead">Enter your name and India PIN to join.</p>
+        <div class="setup-field"><label for="joinName">Your name</label><input id="joinName" type="text" maxlength="40" /></div>
+        <div class="setup-field"><label for="joinPin">PIN</label><input id="joinPin" type="text" inputmode="numeric" maxlength="6" /></div>
+        <p class="setup-error hidden" id="joinErr"></p>
+        <p class="setup-geocode-status hidden" id="joinStatus"></p>
+        <div class="setup-actions"><button type="button" id="btnJoinSession" class="primary">Join</button><button type="button" id="btnLeaveJoin">Leave</button></div>`;
+      overlay.appendChild(card);
+      document.getElementById("btnLeaveJoin").addEventListener("click", () => {
+        window.location.hash = "";
+        window.location.reload();
+      });
+      document.getElementById("btnJoinSession").addEventListener("click", async () => {
+        const nm = (document.getElementById("joinName").value || "").trim() || "Guest";
+        const pin = (document.getElementById("joinPin").value || "").trim();
+        const err = document.getElementById("joinErr");
+        const st = document.getElementById("joinStatus");
+        err.classList.add("hidden");
+        st.classList.remove("hidden");
+        st.textContent = `Looking up PIN for ${nm}…`;
+        try {
+          const geo = await geocodeIndianPincode(pin);
+          currentUserName = nm;
+          const reqKey = `session_${sessionId}_requests`;
+          const reqRaw = safeStorageGet(reqKey);
+          let requests = [];
+          if (reqRaw) {
+            try { requests = JSON.parse(reqRaw) || []; } catch (e) {}
+          }
+          requests.push({
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name: nm,
+            pincode: geo.pincode,
+            lat: geo.lat,
+            lng: geo.lng,
+            accepted: false,
+            rejected: false
+          });
+          safeStorageSet(reqKey, JSON.stringify(requests));
+          st.textContent = "Request sent. Waiting for host approval…";
+          if (joinWaitTimer) clearInterval(joinWaitTimer);
+          joinWaitTimer = setInterval(() => {
+            let next = parseSessionHash();
+            if (!next || !next.started) {
+              const stored = safeStorageGet(`session_${sessionId}_state`);
+              if (stored) {
+                try { next = JSON.parse(stored); } catch (e) {}
+              }
+            }
+            const acceptedInPeople = !!next && Array.isArray(next.people) && next.people.some(p => p && p.name === nm && p.pincode === geo.pincode);
+            if (!acceptedInPeople) return;
+            if (!next.started) return;
+            clearInterval(joinWaitTimer);
+            joinWaitTimer = null;
+            people = (next.people || []).map(p => ({ name: p.name, pincode: p.pincode, lat: p.lat, lng: p.lng, marker: null }));
+            sessionState = next;
+            sessionId = next.sessionId || sessionId;
+            void completeSetup();
+          }, 2000);
+        } catch (e) {
+          st.classList.add("hidden");
+          err.textContent = (e && e.message) || "Could not join right now.";
+          err.classList.remove("hidden");
+        }
+      });
+    }
+
     // ── Onboarding ──
+    document.getElementById("btnCreateRoomMode").addEventListener("click", () => {
+      document.getElementById("setupStepCount").classList.add("hidden");
+      document.getElementById("setupStepNames").classList.add("hidden");
+      document.getElementById("setupStepRoom").classList.remove("hidden");
+      const err = document.getElementById("roomCreateError");
+      const st = document.getElementById("roomCreateStatus");
+      if (err) { err.classList.add("hidden"); err.textContent = ""; }
+      if (st) { st.classList.add("hidden"); st.textContent = ""; }
+      document.getElementById("roomHostName").focus();
+    });
+    document.getElementById("btnRoomBack").addEventListener("click", () => {
+      document.getElementById("setupStepRoom").classList.add("hidden");
+      document.getElementById("setupStepCount").classList.remove("hidden");
+    });
+    document.getElementById("btnCreateRoomNow").addEventListener("click", async () => {
+      const nm = (document.getElementById("roomHostName").value || "").trim() || "Host";
+      const pin = (document.getElementById("roomHostPin").value || "").trim();
+      const err = document.getElementById("roomCreateError");
+      const st = document.getElementById("roomCreateStatus");
+      err.classList.add("hidden");
+      st.classList.remove("hidden");
+      st.textContent = `Looking up PIN for ${nm}…`;
+      try {
+        const geo = await geocodeIndianPincode(pin);
+        people = [{ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode, marker: null }];
+        currentUserName = nm;
+        sessionId = randomSessionId();
+        sessionState = {
+          hostName: nm,
+          sessionId,
+          people: [{ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode }],
+          locked: false,
+          started: false
+        };
+        serializeSessionState(sessionState);
+        safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
+        safeStorageSet(`session_${sessionId}_requests`, JSON.stringify([]));
+        document.getElementById("setupOverlay").classList.add("hidden");
+        openShareModal(sessionState, () => { void completeSetup(); }, "room");
+      } catch (e) {
+        st.classList.add("hidden");
+        err.textContent = (e && e.message) || "Could not create room.";
+        err.classList.remove("hidden");
+      }
+    });
+
     document.getElementById("btnCountNext").addEventListener("click", () => {
       let n = parseInt(document.getElementById("inputCount").value, 10);
       if (Number.isNaN(n)) n = 2;
-      n = Math.min(8, Math.max(2, n));
+      n = Math.min(4, Math.max(2, n));
       document.getElementById("inputCount").value = String(n);
       const wrap = document.getElementById("setupNamesFields");
       wrap.innerHTML = "";
@@ -2583,8 +3322,19 @@ out center;
         }
 
         stEl.classList.add("hidden");
+        currentUserName = people[0] ? people[0].name : "";
+        sessionId = randomSessionId();
+        sessionState = {
+          hostName: currentUserName || "Host",
+          sessionId,
+          people: people.map(p => ({ name: p.name, pincode: p.pincode || "", lat: p.lat, lng: p.lng })),
+          locked: people.length >= 4,
+          started: false
+        };
+        serializeSessionState(sessionState);
+        safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
         document.getElementById("setupOverlay").classList.add("hidden");
-        await completeSetup();
+        openShareModal(sessionState, () => { void completeSetup(); });
       } catch (e) {
         people = [];
         errEl.classList.add("hidden");
@@ -2639,6 +3389,10 @@ out center;
     }
     syncRadiusUi();
     applyMobilePanelDefault();
+    const hashState = parseSessionHash();
+    if (hashState) {
+      enterJoinMode(hashState);
+    }
 
     window.addEventListener("resize", () => {
       map.invalidateSize();
