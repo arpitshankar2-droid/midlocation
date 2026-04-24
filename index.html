@@ -1847,7 +1847,6 @@ out center;
     let currentUserName = "";
     let sessionId = "";
     let sessionState = null;
-    // Session/share timers and overlay state.
     let sessionPeerTimer = null;
     let sessionHostStartTimer = null;
     let joinWaitTimer = null;
@@ -1889,6 +1888,7 @@ out center;
         if (state && state.sessionId) safeStorageSet(`session_${state.sessionId}_state`, JSON.stringify(state));
         return true;
       } catch (e) { return false; }
+      try { window.location.hash = "#" + btoa(JSON.stringify(state)); return true; } catch (e) { return false; }
     }
     function parseSessionHash() {
       const raw = (window.location.hash || "").replace(/^#/, "").trim();
@@ -2875,6 +2875,13 @@ out center;
 
     function openShareModal(state, onStart, mode) {
       shareSessionMode = mode || "standard";
+    function closeShareModal() {
+      if (shareModalEl) shareModalEl.classList.add("hidden");
+      if (sessionPeerTimer) { clearInterval(sessionPeerTimer); sessionPeerTimer = null; }
+      if (sessionHostStartTimer) { clearTimeout(sessionHostStartTimer); sessionHostStartTimer = null; }
+    }
+
+    function openShareModal(state, onStart) {
       if (!shareModalEl) {
         shareModalEl = document.createElement("div");
         shareModalEl.id = "shareModal";
@@ -2902,6 +2909,18 @@ out center;
       const input = document.getElementById("shareUrlInput");
       const joined = document.getElementById("shareJoinedCount");
       const pendingWrap = document.getElementById("sharePendingWrap");
+          <div class="share-actions"><button type="button" id="btnStartNow">Start without waiting</button></div>
+        </div>`;
+        document.body.appendChild(shareModalEl);
+        shareModalEl.addEventListener("click", (e) => { if (e.target === shareModalEl) closeShareModal(); });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && shareModalEl && !shareModalEl.classList.contains("hidden")) closeShareModal();
+          if (e.key === "Escape" && spinOverlayEl && !spinOverlayEl.classList.contains("hidden")) spinOverlayEl.classList.add("hidden");
+        });
+      }
+      shareModalEl.classList.remove("hidden");
+      const input = document.getElementById("shareUrlInput");
+      const joined = document.getElementById("shareJoinedCount");
       if (input) input.value = window.location.href;
       const updateJoined = () => {
         let n = state.people.length;
@@ -2974,6 +2993,21 @@ out center;
         navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
       };
       document.getElementById("btnStartNow").onclick = () => { closeShareModal(true); };
+        if (n >= 4) {
+          closeShareModal();
+          onStart();
+        }
+      };
+      updateJoined();
+      sessionPeerTimer = setInterval(updateJoined, 2000);
+      sessionHostStartTimer = setTimeout(() => {
+        closeShareModal();
+        onStart();
+      }, 90000);
+      document.getElementById("btnCopySession").onclick = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied")).catch(() => showToast("Copy failed"));
+      };
+      document.getElementById("btnStartNow").onclick = () => { closeShareModal(); onStart(); };
     }
 
     function ensureSpinOverlay() {
@@ -3173,6 +3207,15 @@ out center;
             const acceptedInPeople = !!next && Array.isArray(next.people) && next.people.some(p => p && p.name === nm && p.pincode === geo.pincode);
             if (!acceptedInPeople) return;
             if (!next.started) return;
+          sessionState.people.push({ name: nm, pincode: geo.pincode, lat: geo.lat, lng: geo.lng });
+          if (sessionState.people.length >= 4) sessionState.locked = true;
+          serializeSessionState(sessionState);
+          safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
+          st.textContent = "You're in! Waiting for host…";
+          if (joinWaitTimer) clearInterval(joinWaitTimer);
+          joinWaitTimer = setInterval(() => {
+            const next = parseSessionHash();
+            if (!next || !next.started) return;
             clearInterval(joinWaitTimer);
             joinWaitTimer = null;
             people = (next.people || []).map(p => ({ name: p.name, pincode: p.pincode, lat: p.lat, lng: p.lng, marker: null }));
