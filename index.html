@@ -77,6 +77,11 @@
       transition: background 0.15s;
     }
     .popup-link:hover { background: rgba(52,211,153,0.18); }
+    .popup-like.liked-popup {
+      background: rgba(251,113,133,0.15);
+      color: #fda4af;
+      border-color: rgba(251,113,133,0.35);
+    }
 
     /* ── TOP BAR ── */
     .top-bar {
@@ -1029,10 +1034,12 @@
       top: max(0.65rem, calc(env(safe-area-inset-top) + 0.35rem));
       max-width: min(92vw, 420px);
       padding: 0.55rem 0.85rem;
+      padding: 0.65rem 1rem;
       background: var(--surface-2);
       border: 1px solid rgba(52,211,153,0.35);
       border-radius: 12px;
       font-size: 0.78rem;
+      font-size: 0.85rem;
       font-weight: 600;
       text-align: center;
       line-height: 1.35;
@@ -1165,6 +1172,8 @@
       color: var(--text);
       padding: 0.5rem 0.6rem;
       font-size: 0.72rem;
+      padding: 0.65rem 0.75rem;
+      font-size: 16px;
     }
     .share-url-row button {
       display: flex;
@@ -1176,6 +1185,8 @@
       color: var(--text);
       padding: 0.5rem 0.6rem;
       font-size: 0.72rem;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.85rem;
       cursor: pointer;
       transition: background 0.15s;
     }
@@ -1195,6 +1206,8 @@
       color: #bae6fd;
       padding: 0.42rem 0.6rem;
       font-size: 0.7rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
     }
@@ -1269,6 +1282,8 @@
       color: #bae6fd;
       padding: 0.44rem 0.64rem;
       font-size: 0.7rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
     }
@@ -1293,6 +1308,8 @@
       color: #dbeafe;
       padding: 0.25rem 0.5rem;
       font-size: 0.62rem;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.68rem;
       cursor: pointer;
     }
     .btn-like {
@@ -1448,7 +1465,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
-  (function () {
+  (async function () {
     const R = 6371;
 
     const PERSON_COLORS = ["#f472b6", "#38bdf8", "#a78bfa", "#fbbf24", "#34d399", "#fb7185", "#2dd4bf", "#f97316"];
@@ -1875,6 +1892,7 @@ out center;
     let shareStartCallback = null;
     let shareSessionMode = "standard";
     let joinRequestPollTimer = null;
+    let localSpinTs = 0;
     let spinOverlayEl = null;
     let spinWinner = null;
     let spinBackupState = null;
@@ -1888,6 +1906,9 @@ out center;
       "Shortlisting cafes, malls and fun spots…"
     ];
 
+    let backendEnabled = false;
+    const BACKEND_BASE = "/api";
+
     function safeStorageSet(key, value) {
       try { localStorage.setItem(key, value); return true; }
       catch (e) { showToast("Live sync unavailable in private mode"); return false; }
@@ -1895,6 +1916,60 @@ out center;
     function safeStorageGet(key) {
       try { return localStorage.getItem(key); }
       catch (e) { showToast("Live sync unavailable in private mode"); return null; }
+    }
+    async function testBackend() {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/health`);
+        backendEnabled = res.ok;
+      } catch (e) {
+        backendEnabled = false;
+      }
+      return backendEnabled;
+    }
+    async function apiRequest(path, options = {}) {
+      const res = await fetch(`${BACKEND_BASE}${path}`, Object.assign({ headers: { "Content-Type": "application/json" }, cache: "no-store" }, options));
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+      return res.json();
+    }
+    async function apiCreateSession(session) {
+      return apiRequest(`/session`, { method: "POST", body: JSON.stringify(session) });
+    }
+    async function apiGetSession(sessionId) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}`);
+    }
+    async function apiAddRequest(sessionId, request) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}/request`, { method: "POST", body: JSON.stringify(request) });
+    }
+    async function apiGetRequests(sessionId) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}/requests`);
+    }
+    async function apiToggleLike(sessionId, venueKey, personName, isLike) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}/like`, { method: "POST", body: JSON.stringify({ venueKey, personName, like: isLike }) });
+    }
+    async function apiTriggerSpin(sessionId) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}/spin`, { method: "POST" });
+    }
+    async function apiClearSpin(sessionId) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}/clearspin`, { method: "POST" });
+    }
+    async function apiApproveRequest(sessionId, requestId) {
+      return apiRequest(`/session/${encodeURIComponent(sessionId)}/request/${encodeURIComponent(requestId)}/approve`, { method: "POST" });
+    }
+    async function readSessionState(sessionId) {
+      if (backendEnabled) {
+        try {
+          return await apiGetSession(sessionId);
+        } catch (e) {
+          backendEnabled = false;
+          return null;
+        }
+      }
+      const raw = safeStorageGet(`session_${sessionId}_state`);
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch (e) { return null; }
     }
     function randomSessionId() {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -1907,8 +1982,9 @@ out center;
         window.location.hash = "#" + btoa(JSON.stringify(state));
         if (state && state.sessionId) safeStorageSet(`session_${state.sessionId}_state`, JSON.stringify(state));
         return true;
-      } catch (e) { return false; }
-      try { window.location.hash = "#" + btoa(JSON.stringify(state)); return true; } catch (e) { return false; }
+      } catch (e) {
+        return false;
+      }
     }
     function parseSessionHash() {
       const raw = (window.location.hash || "").replace(/^#/, "").trim();
@@ -1918,6 +1994,14 @@ out center;
         if (!parsed || !Array.isArray(parsed.people)) return null;
         return parsed;
       } catch (e) { return null; }
+    }
+    function parseSessionIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("session");
+    }
+    function getShareUrl(sessionId) {
+      if (!sessionId) return window.location.href;
+      return `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(sessionId)}`;
     }
     function venueKeyFor(v) {
       return `${v.name}|${v.lat.toFixed(4)}|${v.lng.toFixed(4)}`;
@@ -2227,12 +2311,17 @@ out center;
         <div class="popup-dist" style="font-weight:700;color:#94a3b8;margin-top:0.25rem">Total: ${sumKm.toFixed(1)} km</div>
         <div class="popup-dist" style="color:#94a3b8">From Dist-mid: ${centerKmDist.toFixed(1)} km${Number.isFinite(centerKmTime) ? ` · From Time-mid: ${centerKmTime.toFixed(1)} km` : ""}</div>
         ${popupFairLine(dists, names)}
-        <button class="popup-link popup-copy" type="button" data-copy="${escapeHtml(venueAddressText(v))}">
-          <span class="material-symbols-outlined" style="font-size:13px">content_copy</span>Copy address
-        </button>
-        <a class="popup-link" href="${mapsUrl(v.lat, v.lng)}" target="_blank" rel="noopener noreferrer">
-          <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Open in Maps
-        </a>`;
+        <div style="display:flex; gap:0.35rem; margin-top:0.4rem; flex-wrap:wrap">
+          <button class="popup-link popup-like" type="button" data-venue-key="${escapeHtml(venueKeyFor(v))}">
+            <span class="material-symbols-outlined" style="font-size:13px">favorite_border</span> Like
+          </button>
+          <button class="popup-link popup-copy" type="button" data-copy="${escapeHtml(venueAddressText(v))}">
+            <span class="material-symbols-outlined" style="font-size:13px">content_copy</span>Copy
+          </button>
+          <a class="popup-link" href="${mapsUrl(v.lat, v.lng)}" target="_blank" rel="noopener noreferrer">
+            <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>Maps
+          </a>
+        </div>`;
     }
 
     function syncRadiusUi(previewKm) {
@@ -2262,14 +2351,25 @@ out center;
         mk.on("popupopen", () => {
           const el = mk.getPopup() && mk.getPopup().getElement();
           if (!el) return;
-          const btn = el.querySelector(".popup-copy");
-          if (!btn || btn.dataset.bound === "1") return;
-          btn.dataset.bound = "1";
-          btn.addEventListener("click", (ev) => {
+          const btnCopy = el.querySelector(".popup-copy");
+          if (btnCopy && btnCopy.dataset.bound !== "1") {
+            btnCopy.dataset.bound = "1";
+            btnCopy.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              copyVenueAddress(v);
+            });
+          }
+          const btnLike = el.querySelector(".popup-like");
+          if (btnLike && btnLike.dataset.bound !== "1") {
+            btnLike.dataset.bound = "1";
+            btnLike.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
-            copyVenueAddress(v);
-          });
+              toggleLike(venueKeyFor(v));
+            });
+          }
+          refreshLikeUI();
         });
         mk.on("click", () => {
           selectedVenueRow = row;
@@ -2394,19 +2494,111 @@ out center;
       applyFilter();
       if (likeSyncTimer) clearInterval(likeSyncTimer);
       if (sessionId) {
-        likeSyncTimer = setInterval(() => {
-          const raw = safeStorageGet(`session_${sessionId}_likes`);
-          if (!raw) return;
+        likeSyncTimer = setInterval(async () => {
+          if (backendEnabled) {
+            try {
+              const session = await apiGetSession(sessionId);
+              if (session && session.likes) {
+                Object.keys(venueLikes).forEach(k => { if (!venueLikes[k] || !venueLikes[k].length) delete venueLikes[k]; });
+                Object.keys(session.likes).forEach(k => { if (!session.likes[k] || !session.likes[k].length) delete session.likes[k]; });
+                const oldLikesStr = JSON.stringify(venueLikes);
+                const newLikesStr = JSON.stringify(session.likes);
+                if (oldLikesStr !== newLikesStr) {
+                  for (const key in session.likes) {
+                    const newVoters = session.likes[key] || [];
+                    const oldVoters = venueLikes[key] || [];
+                    const added = newVoters.filter(v => !oldVoters.includes(v) && v !== currentUserName);
+                    if (added.length > 0) {
+                      const row = vMarkers.find(r => r.key === key);
+                      const vname = row ? row.v.name : "A spot";
+                      showToast(`❤️ ${added[0]} liked ${vname}`);
+                    }
+                  }
+                  venueLikes = JSON.parse(newLikesStr);
+                  refreshLikeUI();
+                  checkLikeWinner();
+                }
+              }
+          if (session) {
+            if (Array.isArray(session.people) && session.people.length > people.length) {
+              people.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
+              if (markerMid) { map.removeLayer(markerMid); markerMid = null; }
+              if (markerTimeMid) { map.removeLayer(markerTimeMid); markerTimeMid = null; }
+              if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
+              if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
+              if (spokesLayer) { map.removeLayer(spokesLayer); spokesLayer = null; }
+              people = session.people.map(p => ({ name: p.name, pincode: p.pincode || "", lat: p.lat, lng: p.lng, marker: null }));
+              if (sessionState) sessionState.people = session.people;
+              showToast("Someone joined! Recalculating map...");
+              void completeSetup();
+              return;
+            }
+            if (session.spin && session.spin.ts > localSpinTs) {
+              executeSpin(session.spin.winnerIndex, session.spin.ts);
+            } else if (!session.spin && localSpinTs > 0) {
+              localSpinTs = 0;
+              clearSpinLocally();
+            }
+          }
+            } catch (e) {}
+          } else {
+        const rawLikes = safeStorageGet(`session_${sessionId}_likes`);
+        if (rawLikes) {
           try {
-            const incoming = JSON.parse(raw);
-            Object.keys(incoming || {}).forEach(key => {
-              const local = new Set(Array.isArray(venueLikes[key]) ? venueLikes[key] : []);
-              (incoming[key] || []).forEach(v => local.add(v));
-              venueLikes[key] = Array.from(local);
-            });
-            refreshLikeUI();
-            checkLikeWinner();
+            const incoming = JSON.parse(rawLikes);
+            Object.keys(venueLikes).forEach(k => { if (!venueLikes[k] || !venueLikes[k].length) delete venueLikes[k]; });
+            Object.keys(incoming).forEach(k => { if (!incoming[k] || !incoming[k].length) delete incoming[k]; });
+            const oldLikesStr = JSON.stringify(venueLikes);
+            const newLikesStr = JSON.stringify(incoming);
+            if (oldLikesStr !== newLikesStr) {
+              for (const key in incoming) {
+                const newVoters = incoming[key] || [];
+                const oldVoters = venueLikes[key] || [];
+                const added = newVoters.filter(v => !oldVoters.includes(v) && v !== currentUserName);
+                if (added.length > 0) {
+                  const row = vMarkers.find(r => r.key === key);
+                  const vname = row ? row.v.name : "A spot";
+                  showToast(`❤️ ${added[0]} liked ${vname}`);
+                }
+              }
+              venueLikes = incoming;
+              refreshLikeUI();
+              checkLikeWinner();
+            }
           } catch (e) {}
+        }
+        const rawPeers = safeStorageGet(`session_${sessionId}_peers`);
+        if (rawPeers) {
+          try {
+            const incomingPeers = JSON.parse(rawPeers);
+            if (Array.isArray(incomingPeers) && incomingPeers.length > people.length) {
+              people.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
+              if (markerMid) { map.removeLayer(markerMid); markerMid = null; }
+              if (markerTimeMid) { map.removeLayer(markerTimeMid); markerTimeMid = null; }
+              if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
+              if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
+              if (spokesLayer) { map.removeLayer(spokesLayer); spokesLayer = null; }
+              people = incomingPeers.map(p => ({ name: p.name, pincode: p.pincode || "", lat: p.lat, lng: p.lng, marker: null }));
+              if (sessionState) sessionState.people = incomingPeers;
+              showToast("Someone joined! Recalculating map...");
+              void completeSetup();
+              return;
+            }
+          } catch(e) {}
+        }
+        const spinRaw = safeStorageGet(`session_${sessionId}_spin`);
+        if (spinRaw) {
+          try {
+            const spinData = JSON.parse(spinRaw);
+            if (spinData && spinData.ts > localSpinTs) {
+              executeSpin(spinData.winnerIndex, spinData.ts);
+            }
+          } catch(e) {}
+        } else if (localSpinTs > 0) {
+          localSpinTs = 0;
+          clearSpinLocally();
+        }
+          }
         }, 3000);
       }
       const b = L.latLngBounds(people.map(p => [p.lat, p.lng]));
@@ -2498,6 +2690,8 @@ out center;
       document.getElementById("placeList").innerHTML = "";
       const oldBanner = document.getElementById("spinHostBanner");
       if (oldBanner) oldBanner.remove();
+      const wBanner = document.getElementById("winnerBanner");
+      if (wBanner) wBanner.remove();
     }
 
     // ── Filter state ──
@@ -2508,6 +2702,10 @@ out center;
     }
 
     function withinVenueRadius(row) {
+      if (spinWinner && spinWinner.person) {
+        const dHost = haversineKm(spinWinner.person.lat, spinWinner.person.lng, row.v.lat, row.v.lng);
+        return dHost <= venueRadiusKm;
+      }
       if (activeMidMode === "dist") return row.centerKmDist >= 0 && row.centerKmDist <= venueRadiusKm;
       if (activeMidMode === "time") return Number.isFinite(row.centerKmTime) && row.centerKmTime >= 0 && row.centerKmTime <= venueRadiusKm;
       const inDist = row.centerKmDist >= 0 && row.centerKmDist <= venueRadiusKm;
@@ -2570,7 +2768,19 @@ out center;
       list.innerHTML = "";
 
       if (!sortedRows.length) {
-        list.innerHTML = `<p class="empty-msg">No places found within <strong>${venueRadiusKm} km</strong> of <strong>${midModeLabel()}</strong> for this filter.</p>`;
+        list.innerHTML = `<p class="empty-msg">No places found within <strong>${venueRadiusKm} km</strong> of <strong>${midModeLabel()}</strong> for this filter.</p>
+        <div style="text-align:center; margin-top:0.6rem;">
+          <button type="button" id="btnRetryPlaces" class="panel-btn fit">Try searching again</button>
+        </div>`;
+        const retryBtn = document.getElementById("btnRetryPlaces");
+        if (retryBtn) {
+          retryBtn.addEventListener("click", async () => {
+            startPlanLoader("Searching for places again...");
+            await refreshDiscoveredVenues();
+            applyFilter();
+            stopPlanLoader();
+          });
+        }
         return;
       }
 
@@ -2579,8 +2789,13 @@ out center;
 
       shown.forEach((row, i) => {
         const { v, dists, sumKm, centerKmDist, centerKmTime } = row;
-        const modeKm = activeMidMode === "time" ? centerKmTime : centerKmDist;
-        const modeLabel = activeMidMode === "time" ? "time-mid" : "dist-mid";
+        let modeKm = activeMidMode === "time" ? centerKmTime : centerKmDist;
+        let modeLabel = activeMidMode === "time" ? "time-mid" : "dist-mid";
+
+        if (spinWinner && spinWinner.person) {
+          modeKm = haversineKm(spinWinner.person.lat, spinWinner.person.lng, v.lat, v.lng);
+          modeLabel = escapeHtml(spinWinner.person.name);
+        }
         const delta = Math.max(...dists) - Math.min(...dists);
         const imax = dists.indexOf(Math.max(...dists));
         let fairMicro = delta < 1.5 ? "🎯 Balanced trips" : `🛣️ Longest: ${escapeHtml(names[imax])} (${delta.toFixed(1)} km spread)`;
@@ -2664,11 +2879,19 @@ out center;
       document.querySelectorAll(".btn-like").forEach(btn => {
         const key = btn.dataset.venueKey || "";
         const arr = Array.isArray(venueLikes[key]) ? Array.from(new Set(venueLikes[key])) : [];
-        venueLikes[key] = arr;
+        if (arr.length > 0) venueLikes[key] = arr;
+        else delete venueLikes[key];
         const liked = !!voter && arr.includes(voter);
         btn.textContent = `${liked ? "♥" : "♡"} ${arr.length}`;
         btn.setAttribute("aria-pressed", liked ? "true" : "false");
         btn.classList.toggle("liked", liked);
+      });
+      document.querySelectorAll(".popup-like").forEach(btn => {
+        const key = btn.dataset.venueKey || "";
+        const arr = Array.isArray(venueLikes[key]) ? Array.from(new Set(venueLikes[key])) : [];
+        const liked = !!voter && arr.includes(voter);
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:13px">${liked ? 'favorite' : 'favorite_border'}</span> ${liked ? 'Liked' : 'Like'} (${arr.length})`;
+        btn.classList.toggle("liked-popup", liked);
       });
       document.querySelectorAll(".venue-card").forEach(card => {
         const key = card.dataset.venueKey || "";
@@ -2686,21 +2909,80 @@ out center;
     }
 
     function checkLikeWinner() {
-      const threshold = Math.ceil((people.length || 1) / 2);
-      let nextWinner = null;
-      Object.keys(venueLikes).some(key => {
+      let maxLikes = 0;
+      let tiedWinners = [];
+      
+      Object.keys(venueLikes).forEach(key => {
         const voters = Array.isArray(venueLikes[key]) ? Array.from(new Set(venueLikes[key])) : [];
-        venueLikes[key] = voters;
-        if (voters.length >= threshold) { nextWinner = key; return true; }
-        return false;
+        if (voters.length > 0) venueLikes[key] = voters;
+        else delete venueLikes[key];
+        if (voters.length > maxLikes) {
+          maxLikes = voters.length;
+          tiedWinners = [key];
+        } else if (voters.length === maxLikes && maxLikes > 0) {
+          tiedWinners.push(key);
+        }
       });
+      
+      let nextWinner = null;
+      if (tiedWinners.length === 1) {
+        nextWinner = tiedWinners[0];
+      } else if (tiedWinners.length > 1) {
+        // Tie-breaker: Pick the venue with the lowest total travel distance
+        let bestKm = Infinity;
+        tiedWinners.forEach(key => {
+          const row = vMarkers.find(r => r.key === key);
+          if (row && row.sumKm < bestKm) {
+            bestKm = row.sumKm;
+            nextWinner = key;
+          }
+        });
+      }
+
       if (nextWinner === likeWinner) return;
       likeWinner = nextWinner;
       vMarkers.forEach(row => row.marker.setIcon(venueIcon(row.v, likeWinner === row.key)));
       refreshLikeUI();
+
+      const scroller = document.querySelector(".panel-scroll");
+      const oldBanner = document.getElementById("winnerBanner");
+      if (oldBanner) oldBanner.remove();
+
       if (likeWinner) {
         const winnerRow = vMarkers.find(r => r.key === likeWinner);
-        if (winnerRow) showToast(`${winnerRow.v.name} is the crowd favourite!`);
+        if (winnerRow) {
+          showToast(`${winnerRow.v.name} is the crowd favourite!`);
+          
+          const b = document.createElement("div");
+          b.className = "host-spin-banner";
+          b.id = "winnerBanner";
+          b.style.background = "rgba(52,211,153,0.15)";
+          b.style.borderColor = "rgba(52,211,153,0.3)";
+          b.style.color = "#6ee7b7";
+          b.innerHTML = `🎉 <strong>${escapeHtml(winnerRow.v.name)}</strong> is the group's top pick!`;
+          if (scroller) scroller.insertBefore(b, document.getElementById("placeList"));
+
+          if (spokesLayer) {
+            spokesLayer.clearLayers();
+            people.forEach(p => {
+              spokesLayer.addLayer(L.polyline([[p.lat, p.lng], [winnerRow.v.lat, winnerRow.v.lng]], {
+                color: "#34d399", weight: 3, opacity: 0.8, dashArray: "6 6"
+              }));
+            });
+          }
+
+          selectedVenueRow = winnerRow;
+          setFairnessUI(winnerRow.v.name, winnerRow.dists);
+        }
+      } else {
+        if (spokesLayer && meetCenter) {
+          spokesLayer.clearLayers();
+          people.forEach(p => {
+            spokesLayer.addLayer(L.polyline([[p.lat, p.lng], [meetCenter.lat, meetCenter.lng]], {
+              color: "#475569", weight: 2, opacity: 0.55, dashArray: "8 6"
+            }));
+          });
+        }
       }
     }
 
@@ -2735,6 +3017,9 @@ out center;
 
       if (selectedVenueRow) {
         setFairnessUI(selectedVenueRow.v.name, selectedVenueRow.dists);
+      } else if (spinWinner && spinWinner.person) {
+        const dHost = people.map(p => haversineKm(p.lat, p.lng, spinWinner.person.lat, spinWinner.person.lng));
+        setFairnessUI(`Hosting: ${spinWinner.person.name}`, dHost);
       } else if (people.length && meetCenter) {
         setFairnessUI("Fair meet point (Σd + W·variance)", dMid);
       }
@@ -2785,21 +3070,33 @@ out center;
       document.getElementById("filterRow").appendChild(btn);
     });
 
+    function toggleLike(key) {
+      if (!key) return;
+      const voterName = currentUserName || (people[0] && people[0].name);
+      if (!voterName) return;
+      const set = new Set(Array.isArray(venueLikes[key]) ? venueLikes[key] : []);
+      const isLiked = set.has(voterName);
+      if (isLiked) set.delete(voterName);
+      else set.add(voterName);
+      const arr = Array.from(set);
+      if (arr.length > 0) venueLikes[key] = arr;
+      else delete venueLikes[key];
+      refreshLikeUI();
+      checkLikeWinner();
+      if (backendEnabled && sessionId) {
+        apiToggleLike(sessionId, key, voterName, !isLiked).catch(() => {});
+      }
+      if (sessionId) {
+        safeStorageSet(`session_${sessionId}_likes`, JSON.stringify(venueLikes));
+      }
+    }
+
     document.getElementById("placeList").addEventListener("click", (e) => {
       const likeBtn = e.target.closest(".btn-like");
       if (!likeBtn) return;
       e.stopPropagation();
       const key = likeBtn.dataset.venueKey || "";
-      if (!key) return;
-      const voterName = currentUserName || (people[0] && people[0].name);
-      if (!voterName) return;
-      const set = new Set(Array.isArray(venueLikes[key]) ? venueLikes[key] : []);
-      if (set.has(voterName)) set.delete(voterName);
-      else set.add(voterName);
-      venueLikes[key] = Array.from(set);
-      refreshLikeUI();
-      checkLikeWinner();
-      if (sessionId) safeStorageSet(`session_${sessionId}_likes`, JSON.stringify(venueLikes));
+      toggleLike(key);
     });
 
     // ── Fit map ──
@@ -2818,9 +3115,10 @@ out center;
     });
     document.getElementById("btnSpin").addEventListener("click", () => {
       if (!document.body.classList.contains("setup-done") || people.length < 2) return;
+      setPanelCollapsed(true);
       ensureSpinOverlay();
       spinOverlayEl.classList.remove("hidden");
-      renderSpinWheel();
+      renderSpinWheelUI();
     });
 
     const panelEl = document.querySelector(".panel");
@@ -2873,11 +3171,14 @@ out center;
     }
 
     // ── Share / copy link ──
+    let toastTimer = null;
     function showToast(msg) {
       const t = document.getElementById("toast");
       t.textContent = msg;
       t.classList.add("show");
       setTimeout(() => t.classList.remove("show"), 2600);
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 2000);
     }
 
     function closeShareModal(startNow) {
@@ -2905,7 +3206,7 @@ out center;
           <div class="plan-loader-msg">Anyone with this link can join (up to 4 people).</div>
           <div class="share-url-row">
             <input id="shareUrlInput" type="text" readonly />
-            <button type="button" id="btnCopySession"><span class="material-symbols-outlined">content_copy</span> Copy link</button>
+            <button type="button" id="btnCopySession"><span class="material-symbols-outlined">touch_app</span> Copy link</button>
           </div>
           <div class="share-joined" id="shareJoinedCount">1 / 4 joined</div>
           <div class="share-joined hidden" id="sharePendingWrap"></div>
@@ -2923,29 +3224,45 @@ out center;
       const input = document.getElementById("shareUrlInput");
       const joined = document.getElementById("shareJoinedCount");
       const pendingWrap = document.getElementById("sharePendingWrap");
-      if (input) input.value = window.location.href;
-      const updateJoined = () => {
+      if (input) input.value = getShareUrl(state.sessionId);
+      const updateJoined = async () => {
         let n = state.people.length;
-        const raw = safeStorageGet(`session_${state.sessionId}_peers`);
-        if (raw) {
-          try { n = Math.max(n, (JSON.parse(raw) || []).length); } catch (e) {}
+        if (backendEnabled) {
+          const srv = await readSessionState(state.sessionId);
+          if (srv && Array.isArray(srv.people)) {
+            n = Math.max(n, srv.people.length);
+            state.people = srv.people;
+          }
+        } else {
+          const raw = safeStorageGet(`session_${state.sessionId}_peers`);
+          if (raw) {
+            try { n = Math.max(n, (JSON.parse(raw) || []).length); } catch (e) {}
+          }
         }
         if (joined) joined.textContent = `${n} / 4 joined`;
         if (shareSessionMode === "standard" && n >= 4) {
           closeShareModal(true);
         }
       };
-      const updatePending = () => {
+      const updatePending = async () => {
         if (!pendingWrap) return;
         if (shareSessionMode !== "room") {
           pendingWrap.classList.add("hidden");
           pendingWrap.innerHTML = "";
           return;
         }
-        const raw = safeStorageGet(`session_${state.sessionId}_requests`);
         let requests = [];
-        if (raw) {
-          try { requests = JSON.parse(raw) || []; } catch (e) {}
+        if (backendEnabled) {
+          try {
+            requests = await apiGetRequests(state.sessionId);
+          } catch (e) {
+            requests = [];
+          }
+        } else {
+          const raw = safeStorageGet(`session_${state.sessionId}_requests`);
+          if (raw) {
+            try { requests = JSON.parse(raw) || []; } catch (e) { requests = []; }
+          }
         }
         requests = requests.filter(r => r && !r.accepted && !r.rejected);
         if (!requests.length) {
@@ -2955,13 +3272,13 @@ out center;
         }
         pendingWrap.classList.remove("hidden");
         pendingWrap.innerHTML = requests.map((r, idx) => (
-          `<div style=\"display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.35rem\">
-             <span>${escapeHtml(r.name)} · PIN ${escapeHtml(r.pincode || "")}</span>
-             <button type=\"button\" data-allow-idx=\"${idx}\">Allow</button>
+          `<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-top:0.45rem;padding:0.4rem 0.5rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;">
+             <span style="font-size:0.7rem;font-weight:600;color:var(--text);">${escapeHtml(r.name)} <span style="color:var(--muted);font-weight:400">· PIN ${escapeHtml(r.pincode || "")}</span></span>
+             <button type="button" class="panel-btn fit" data-allow-idx="${idx}" style="margin:0;padding:0.25rem 0.6rem;">Allow</button>
            </div>`
         )).join("");
         pendingWrap.querySelectorAll("[data-allow-idx]").forEach(btn => {
-          btn.onclick = () => {
+          btn.onclick = async () => {
             const i = parseInt(btn.getAttribute("data-allow-idx") || "-1", 10);
             if (i < 0 || !requests[i]) return;
             if ((state.people || []).length >= 4) {
@@ -2969,12 +3286,18 @@ out center;
               return;
             }
             const req = requests[i];
-            state.people.push({ name: req.name, pincode: req.pincode, lat: req.lat, lng: req.lng });
-            state.locked = state.people.length >= 4;
-            req.accepted = true;
-            safeStorageSet(`session_${state.sessionId}_requests`, JSON.stringify(requests));
-            safeStorageSet(`session_${state.sessionId}_peers`, JSON.stringify(state.people));
-            serializeSessionState(state);
+            if (backendEnabled) {
+              const updated = await apiApproveRequest(state.sessionId, req.id);
+              state.people = updated.people || state.people;
+              state.locked = updated.locked;
+            } else {
+              state.people.push({ name: req.name, pincode: req.pincode, lat: req.lat, lng: req.lng });
+              state.locked = state.people.length >= 4;
+              req.accepted = true;
+              safeStorageSet(`session_${state.sessionId}_requests`, JSON.stringify(requests));
+              safeStorageSet(`session_${state.sessionId}_peers`, JSON.stringify(state.people));
+              serializeSessionState(state);
+            }
             updateJoined();
             updatePending();
           };
@@ -2995,7 +3318,7 @@ out center;
       const startBtn = document.getElementById("btnStartNow");
       if (copyBtn) {
         copyBtn.onclick = async () => {
-          const text = window.location.href;
+          const text = getShareUrl(state.sessionId);
           if (navigator.clipboard && navigator.clipboard.writeText) {
             try {
               await navigator.clipboard.writeText(text);
@@ -3021,7 +3344,7 @@ out center;
     }
 
     function ensureSpinOverlay() {
-      if (spinOverlayEl) return;
+    if (spinOverlayEl) return;
       spinOverlayEl = document.createElement("div");
       spinOverlayEl.id = "spinOverlay";
       spinOverlayEl.className = "spin-overlay hidden";
@@ -3029,9 +3352,19 @@ out center;
       spinOverlayEl.setAttribute("aria-modal", "true");
       spinOverlayEl.setAttribute("aria-labelledby", "spinTitle");
       spinOverlayEl.innerHTML = `<div class="spin-card">
-        <h3 id="spinTitle">Pick a host</h3>
-        <div class="spin-pointer" aria-hidden="true"></div>
-        <div class="spin-wheel-wrap"><div class="spin-wheel" id="spinWheel"></div></div>
+        <h3 class="spin-title-top" id="spinTitle">Spin the Bottle</h3>
+        <div class="spin-arena" id="spinArena">
+          <div class="spin-bottle-wrap" id="spinWheel">
+            <svg class="spin-bottle" style="width:38px;height:140px;" width="38" height="140" viewBox="0 0 100 300" xmlns="http://www.w3.org/2000/svg">
+              <path d="M35,280 C35,280 20,270 20,200 L20,120 C20,90 35,70 42,40 L42,10 C42,5 58,5 58,10 L58,40 C65,70 80,90 80,120 L80,200 C80,270 65,280 65,280 Z" fill="rgba(16, 185, 129, 0.85)" stroke="#34d399" stroke-width="3"/>
+              <path d="M42,10 L58,10 L58,35 L42,35 Z" fill="rgba(255,255,255,0.4)"/>
+              <path d="M45,15 L55,15 L55,20 L45,20 Z" fill="rgba(0,0,0,0.2)"/>
+              <path d="M30,200 L30,130 C30,110 40,85 45,55" stroke="rgba(255,255,255,0.5)" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <polygon points="50,40 54,55 50,50 46,55" fill="#fff" />
+            </svg>
+          </div>
+          <div id="spinAvatars"></div>
+        </div>
         <div class="spin-result" id="spinResult"></div>
         <div class="spin-sub" id="spinSub"></div>
         <div class="spin-actions"><button type="button" id="btnDoSpin">Spin!</button></div>
@@ -3040,92 +3373,207 @@ out center;
       spinOverlayEl.addEventListener("click", (e) => { if (e.target === spinOverlayEl) spinOverlayEl.classList.add("hidden"); });
     }
 
-    function renderSpinWheel() {
+    function renderSpinWheelUI() {
       ensureSpinOverlay();
       const wheel = document.getElementById("spinWheel");
-      if (!wheel || !people.length) return;
+      const avatarsWrap = document.getElementById("spinAvatars");
+      if (!wheel || !avatarsWrap || !people.length) return;
       const segDeg = 360 / people.length;
-      const stops = people.map((_, i) => {
+      const radiusPercent = 45;
+      avatarsWrap.innerHTML = people.map((p, i) => {
         const c = PERSON_COLORS[i % PERSON_COLORS.length];
-        const s = (i * segDeg).toFixed(2);
-        const e = ((i + 1) * segDeg).toFixed(2);
-        return `${c} ${s}deg ${e}deg`;
-      }).join(",");
-      wheel.style.background = `conic-gradient(${stops})`;
+        const angle = i * segDeg;
+        const rad = (angle - 90) * Math.PI / 180;
+        const left = 50 + radiusPercent * Math.cos(rad);
+        const top = 50 + radiusPercent * Math.sin(rad);
+        let namePos = "";
+        const angleDeg = angle % 360;
+        if (angleDeg >= 315 || angleDeg < 45) { namePos = "bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
+        else if (angleDeg >= 45 && angleDeg < 135) { namePos = "left: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
+        else if (angleDeg >= 135 && angleDeg < 225) { namePos = "top: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
+        else { namePos = "right: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
+        return `<div class="spin-avatar" id="spinAvatar${i}" style="left: ${left}%; top: ${top}%; border-color: ${c}; color: ${c};">
+          ${escapeHtml((p.name||"?").slice(0,1).toUpperCase())}
+          <div class="spin-avatar-name" style="color:${c}; ${namePos}">${escapeHtml(p.name)}</div>
+        </div>`;
+      }).join("");
+
       wheel.style.transform = "rotate(0deg)";
       wheel.style.transition = "none";
-      wheel.innerHTML = people.map((p, i) => {
-        const mid = i * segDeg + segDeg / 2;
-        return `<div class="spin-initial" style="transform:rotate(${mid}deg)"><span>${escapeHtml((p.name||"?").slice(0,1).toUpperCase())}</span></div>`;
-      }).join("");
       document.getElementById("spinResult").textContent = "";
       document.getElementById("spinSub").textContent = "";
       const actions = spinOverlayEl.querySelector(".spin-actions");
       actions.innerHTML = `<button type="button" id="btnDoSpin">Spin!</button>`;
-      document.getElementById("btnDoSpin").onclick = () => {
-        const winner = Math.floor(Math.random() * people.length);
-        const winnerP = people[winner];
-        const winnerCenter = winner * segDeg + segDeg / 2;
-        const targetRotation = 1800 + (360 - winnerCenter);
-        wheel.style.transition = "transform 3s cubic-bezier(0.17,0.67,0.12,0.99)";
-        wheel.style.transform = `rotate(${targetRotation}deg)`;
+      document.getElementById("btnDoSpin").onclick = async () => {
         document.getElementById("btnDoSpin").disabled = true;
-        wheel.ontransitionend = () => {
-          spinWinner = { personIndex: winner, person: winnerP };
-          document.getElementById("spinResult").textContent = `${winnerP.name} is hosting today.`;
-          document.getElementById("spinSub").textContent = "Everyone heads to their area.";
-          actions.innerHTML = `<button type="button" id="btnSeeHostSpots">See spots near ${escapeHtml(winnerP.name)}</button><button type="button" id="btnSpinAgain">Spin again</button>`;
-          document.getElementById("btnSeeHostSpots").onclick = () => { spinOverlayEl.classList.add("hidden"); void showSpinVenues(winner); };
-          document.getElementById("btnSpinAgain").onclick = () => renderSpinWheel();
-          showToast(`${winnerP.name} is hosting today.`);
-        };
+        let spun = false;
+        if (backendEnabled && sessionId) {
+          try {
+            const res = await apiTriggerSpin(sessionId);
+            executeSpin(res.winnerIndex, res.ts);
+            spun = true;
+          } catch (e) {
+            console.warn("API spin failed, falling back to local spin.", e);
+          }
+        }
+        if (!spun) {
+          const winner = Math.floor(Math.random() * people.length);
+          const ts = Date.now();
+          if (sessionId) safeStorageSet(`session_${sessionId}_spin`, JSON.stringify({ winnerIndex: winner, ts }));
+          executeSpin(winner, ts);
+        }
       };
     }
 
-    async function showSpinVenues(personIndex) {
+    function executeSpin(winner, ts) {
+      if (ts <= localSpinTs) return;
+      localSpinTs = ts;
+      ensureSpinOverlay();
+      spinOverlayEl.classList.remove("hidden");
+      
+      const wheel = document.getElementById("spinWheel");
+      const avatarsWrap = document.getElementById("spinAvatars");
+      if (!wheel || !avatarsWrap || !people.length) return;
+
+      const segDeg = 360 / people.length;
+      const radiusPercent = 45;
+      avatarsWrap.innerHTML = people.map((p, i) => {
+        const c = PERSON_COLORS[i % PERSON_COLORS.length];
+        const angle = i * segDeg;
+        const rad = (angle - 90) * Math.PI / 180;
+        const left = 50 + radiusPercent * Math.cos(rad);
+        const top = 50 + radiusPercent * Math.sin(rad);
+        let namePos = "";
+        const angleDeg = angle % 360;
+        if (angleDeg >= 315 || angleDeg < 45) { namePos = "bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
+        else if (angleDeg >= 45 && angleDeg < 135) { namePos = "left: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
+        else if (angleDeg >= 135 && angleDeg < 225) { namePos = "top: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
+        else { namePos = "right: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
+        return `<div class="spin-avatar" id="spinAvatar${i}" style="left: ${left}%; top: ${top}%; border-color: ${c}; color: ${c};">
+          ${escapeHtml((p.name||"?").slice(0,1).toUpperCase())}
+          <div class="spin-avatar-name" style="color:${c}; ${namePos}">${escapeHtml(p.name)}</div>
+        </div>`;
+      }).join("");
+      
+      document.getElementById("spinResult").textContent = "Spinning...";
+      document.getElementById("spinSub").textContent = "";
+      const actions = spinOverlayEl.querySelector(".spin-actions");
+      actions.innerHTML = `<button type="button" disabled>Spinning...</button>`;
+
+      wheel.style.transition = "none";
+      wheel.style.transform = "rotate(0deg)";
+
+      setTimeout(() => {
+        const winnerP = people[winner];
+        const targetRotation = 360 * 5 + (winner * segDeg);
+        wheel.style.transition = "transform 3.5s cubic-bezier(0.17,0.67,0.12,0.99)";
+        wheel.style.transform = `rotate(${targetRotation}deg)`;
+        wheel.ontransitionend = () => {
+          const wAvatar = document.getElementById(`spinAvatar${winner}`);
+          if (wAvatar) wAvatar.classList.add("winner");
+          spinWinner = { personIndex: winner, person: winnerP };
+          document.getElementById("spinResult").textContent = `${winnerP.name} is hosting today.`;
+          document.getElementById("spinSub").textContent = "Everyone heads to their area.";
+          actions.innerHTML = `<button type="button" id="btnSeeHostSpots" class="primary">See spots near ${escapeHtml(winnerP.name)}</button>`;
+          
+          let autoSwitch = setTimeout(() => {
+            if (!spinOverlayEl.classList.contains("hidden")) {
+              const btn = document.getElementById("btnSeeHostSpots");
+              if (btn) btn.click();
+            }
+          }, 4000);
+
+          document.getElementById("btnSeeHostSpots").onclick = () => {
+            clearTimeout(autoSwitch);
+            spinOverlayEl.classList.add("hidden");
+            void showSpinVenues(winner);
+          };
+          showToast(`${winnerP.name} is hosting today.`);
+        };
+      }, 50);
+    }
+
+    async function showSpinVenues(personIndex, isRetry = false) {
       const host = people[personIndex];
       if (!host) return;
-      if (!spinBackupState) {
-        spinBackupState = { discoveredVenues: discoveredVenues.slice(), activeMidMode };
+      if (!isRetry) startPlanLoader(`Finding places near ${host.name}…`);
+      try {
+        if (!isRetry && !spinBackupState) {
+          spinBackupState = { discoveredVenues: discoveredVenues.slice(), activeMidMode };
+        }
+        document.getElementById("fairnessContext").textContent = `For: Hosting: ${host.name}`;
+        const spinVenues = await fetchNearbyVenues(host.lat, host.lng, venueRadiusKm);
+
+        if (spinVenues.length === 0 && venueRadiusKm < 25) {
+          venueRadiusKm += 5;
+          syncRadiusUi();
+          showMidRadius(activeMidMode);
+          showToast(`No places at ${venueRadiusKm - 5}km, expanding to ${venueRadiusKm}km...`);
+          return await showSpinVenues(personIndex, true);
+        }
+
+        discoveredVenues = spinVenues;
+        rebuildVenueMarkersFromDiscovered();
+        if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
+        if (host.marker && map.hasLayer(host.marker)) map.removeLayer(host.marker);
+        spinHostMarker = L.marker([host.lat, host.lng], { icon: hostPersonIcon(host.name) }).addTo(map);
+        const scroller = document.querySelector(".panel-scroll");
+        const old = document.getElementById("spinHostBanner");
+        if (old) old.remove();
+        if (scroller) {
+          const b = document.createElement("div");
+          b.className = "host-spin-banner";
+          b.id = "spinHostBanner";
+          b.innerHTML = `🎉 <strong>${escapeHtml(host.name)}</strong> is hosting! Showing spots near them... <button type="button" id="btnClearSpin">Back to midpoint</button>`;
+          scroller.insertBefore(b, document.getElementById("placeList"));
+        }
+        const clearBtn = document.getElementById("btnClearSpin");
+        if (clearBtn) {
+          clearBtn.onclick = async () => {
+            if (backendEnabled && sessionId) {
+              try { await apiClearSpin(sessionId); } catch(e) {}
+            }
+            if (sessionId) safeStorageSet(`session_${sessionId}_spin`, "");
+            localSpinTs = 0;
+            clearSpinLocally();
+          };
+        }
+        
+        showMidRadius(activeMidMode);
+        const bBounds = L.latLngBounds([[host.lat, host.lng], [host.lat, host.lng]]);
+        discoveredVenues.forEach(v => bBounds.extend([v.lat, v.lng]));
+        map.fitBounds(bBounds, { padding: [55, 55], maxZoom: 14 });
+
+        applyFilter();
+      } finally {
+        if (!isRetry) stopPlanLoader();
       }
-      document.getElementById("fairnessContext").textContent = `For: Hosting: ${host.name}`;
-      const spinVenues = await fetchNearbyVenues(host.lat, host.lng, venueRadiusKm);
-      discoveredVenues = spinVenues;
-      rebuildVenueMarkersFromDiscovered();
-      if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
-      if (host.marker && map.hasLayer(host.marker)) map.removeLayer(host.marker);
-      spinHostMarker = L.marker([host.lat, host.lng], { icon: hostPersonIcon(host.name) }).addTo(map);
-      const scroller = document.querySelector(".panel-scroll");
-      const old = document.getElementById("spinHostBanner");
-      if (old) old.remove();
-      if (scroller) {
-        const b = document.createElement("div");
-        b.className = "host-spin-banner";
-        b.id = "spinHostBanner";
-        b.innerHTML = `📍 Spots near ${escapeHtml(host.name)} — they're hosting <button type="button" id="btnClearSpin">Back to midpoint</button>`;
-        scroller.insertBefore(b, document.getElementById("placeList"));
-      }
-      const clearBtn = document.getElementById("btnClearSpin");
-      if (clearBtn) {
-        clearBtn.onclick = () => {
-          const banner = document.getElementById("spinHostBanner");
-          if (banner) banner.remove();
-          if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
-          spinHostMarker = null;
-          const col = PERSON_COLORS[personIndex % PERSON_COLORS.length];
-          host.marker = L.marker([host.lat, host.lng], { icon: personNumIcon(host.name, col) }).addTo(map);
-          if (spinBackupState) {
-            discoveredVenues = spinBackupState.discoveredVenues.slice();
-            rebuildVenueMarkersFromDiscovered();
-            spinBackupState = null;
-            applyFilter();
-          } else {
-            applyFilter();
-          }
-        };
-      }
-      applyFilter();
     }
+
+    function clearSpinLocally() {
+      const banner = document.getElementById("spinHostBanner");
+      if (banner) banner.remove();
+      if (spinHostMarker && map.hasLayer(spinHostMarker)) map.removeLayer(spinHostMarker);
+      spinHostMarker = null;
+      if (spinWinner && spinWinner.person) {
+         const personIndex = spinWinner.personIndex;
+         const host = spinWinner.person;
+         const col = PERSON_COLORS[personIndex % PERSON_COLORS.length];
+         if (host && !map.hasLayer(host.marker)) host.marker = L.marker([host.lat, host.lng], { icon: personNumIcon(host.name, col) }).addTo(map);
+      }
+      spinWinner = null;
+      showMidRadius(activeMidMode);
+
+      if (spinBackupState) {
+        discoveredVenues = spinBackupState.discoveredVenues.slice();
+        rebuildVenueMarkersFromDiscovered();
+        spinBackupState = null;
+        applyFilter();
+      } else {
+        applyFilter();
+      }
+      spinWinner = null;
+    }  
 
     document.getElementById("btnShare").addEventListener("click", () => {
       const bestRows = vMarkers.filter(matchesRow).sort((a, b) => a.sumKm - b.sumKm);
@@ -3188,13 +3636,7 @@ out center;
         try {
           const geo = await geocodeIndianPincode(pin);
           currentUserName = nm;
-          const reqKey = `session_${sessionId}_requests`;
-          const reqRaw = safeStorageGet(reqKey);
-          let requests = [];
-          if (reqRaw) {
-            try { requests = JSON.parse(reqRaw) || []; } catch (e) {}
-          }
-          requests.push({
+          const req = {
             id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             name: nm,
             pincode: geo.pincode,
@@ -3202,38 +3644,57 @@ out center;
             lng: geo.lng,
             accepted: false,
             rejected: false
-          });
-          safeStorageSet(reqKey, JSON.stringify(requests));
+          };
+          if (backendEnabled) {
+            try {
+              await apiAddRequest(sessionId, req);
+            } catch (e) {
+              backendEnabled = false;
+              const reqKey = `session_${sessionId}_requests`;
+              const reqRaw = safeStorageGet(reqKey);
+              let requests = [];
+              if (reqRaw) {
+                try { requests = JSON.parse(reqRaw) || []; } catch (e) {}
+              }
+              requests.push(req);
+              safeStorageSet(reqKey, JSON.stringify(requests));
+            }
+          } else {
+            const reqKey = `session_${sessionId}_requests`;
+            const reqRaw = safeStorageGet(reqKey);
+            let requests = [];
+            if (reqRaw) {
+              try { requests = JSON.parse(reqRaw) || []; } catch (e) {}
+            }
+            requests.push(req);
+            safeStorageSet(reqKey, JSON.stringify(requests));
+          }
           st.textContent = "Request sent. Waiting for host approval…";
           if (joinWaitTimer) clearInterval(joinWaitTimer);
-          joinWaitTimer = setInterval(() => {
-            let next = parseSessionHash();
-            if (!next || !next.started) {
-              const stored = safeStorageGet(`session_${sessionId}_state`);
-              if (stored) {
-                try { next = JSON.parse(stored); } catch (e) {}
+          joinWaitTimer = setInterval(async () => {
+            let next = null;
+            if (backendEnabled) {
+              try { next = await apiGetSession(sessionId); } catch (e) { next = null; }
+            }
+            if (!next) {
+              next = parseSessionHash();
+              if (!next) {
+                const stored = safeStorageGet(`session_${sessionId}_state`);
+                if (stored) {
+                  try { next = JSON.parse(stored); } catch (e) { next = null; }
+                }
               }
             }
             const acceptedInPeople = !!next && Array.isArray(next.people) && next.people.some(p => p && p.name === nm && p.pincode === geo.pincode);
             if (!acceptedInPeople) return;
-            if (!next.started) return;
-          sessionState.people.push({ name: nm, pincode: geo.pincode, lat: geo.lat, lng: geo.lng });
-          if (sessionState.people.length >= 4) sessionState.locked = true;
-          serializeSessionState(sessionState);
-          safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
-          st.textContent = "You're in! Waiting for host…";
-          if (joinWaitTimer) clearInterval(joinWaitTimer);
-          joinWaitTimer = setInterval(() => {
-            const next = parseSessionHash();
-            if (!next || !next.started) return;
             clearInterval(joinWaitTimer);
             joinWaitTimer = null;
-            people = (next.people || []).map(p => ({ name: p.name, pincode: p.pincode, lat: p.lat, lng: p.lng, marker: null }));
             sessionState = next;
             sessionId = next.sessionId || sessionId;
+            people = (next.people || []).map(p => ({ name: p.name, pincode: p.pincode, lat: p.lat, lng: p.lng, marker: null }));
+            st.textContent = "You're in! Joining…";
             void completeSetup();
           }, 2000);
-        }, 2000);
         } catch (e) {
           st.classList.add("hidden");
           err.textContent = (e && e.message) || "Could not join right now.";
@@ -3243,29 +3704,42 @@ out center;
     }
 
     // ── Onboarding ──
-    document.getElementById("btnCreateRoomMode").addEventListener("click", () => {
-      document.getElementById("setupStepCount").classList.add("hidden");
-      document.getElementById("setupStepNames").classList.add("hidden");
-      document.getElementById("setupStepRoom").classList.remove("hidden");
-      const err = document.getElementById("roomCreateError");
-      const st = document.getElementById("roomCreateStatus");
-      if (err) { err.classList.add("hidden"); err.textContent = ""; }
-      if (st) { st.classList.add("hidden"); st.textContent = ""; }
-      document.getElementById("roomHostName").focus();
-    });
-    document.getElementById("btnRoomBack").addEventListener("click", () => {
-      document.getElementById("setupStepRoom").classList.add("hidden");
-      document.getElementById("setupStepCount").classList.remove("hidden");
-    });
-    document.getElementById("btnCreateRoomNow").addEventListener("click", async () => {
-      const nm = (document.getElementById("roomHostName").value || "").trim() || "Host";
-      const pin = (document.getElementById("roomHostPin").value || "").trim();
-      const err = document.getElementById("roomCreateError");
-      const st = document.getElementById("roomCreateStatus");
-      err.classList.add("hidden");
-      st.classList.remove("hidden");
-      st.textContent = `Looking up PIN for ${nm}…`;
-      try {
+    const btnCreateRoomMode = document.getElementById("btnCreateRoomMode");
+    if (btnCreateRoomMode) {
+      btnCreateRoomMode.addEventListener("click", () => {
+        document.getElementById("setupStepCount").classList.add("hidden");
+        document.getElementById("setupStepNames").classList.add("hidden");
+        document.getElementById("setupStepRoom").classList.remove("hidden");
+        const err = document.getElementById("roomCreateError");
+        const st = document.getElementById("roomCreateStatus");
+        if (err) { err.classList.add("hidden"); err.textContent = ""; }
+        if (st) { st.classList.add("hidden"); st.textContent = ""; }
+        const hostNameInput = document.getElementById("roomHostName");
+        if (hostNameInput) hostNameInput.focus();
+      });
+    } else {
+      console.warn("MeetupPlanner: btnCreateRoomMode not found");
+    }
+    const btnRoomBack = document.getElementById("btnRoomBack");
+    if (btnRoomBack) {
+      btnRoomBack.addEventListener("click", () => {
+        document.getElementById("setupStepRoom").classList.add("hidden");
+        document.getElementById("setupStepCount").classList.remove("hidden");
+      });
+    }
+    const btnCreateRoomNow = document.getElementById("btnCreateRoomNow");
+    if (btnCreateRoomNow) {
+      btnCreateRoomNow.addEventListener("click", async () => {
+        const nm = (document.getElementById("roomHostName").value || "").trim() || "Host";
+        const pin = (document.getElementById("roomHostPin").value || "").trim();
+        const err = document.getElementById("roomCreateError");
+        const st = document.getElementById("roomCreateStatus");
+        if (err) err.classList.add("hidden");
+        if (st) {
+          st.classList.remove("hidden");
+          st.textContent = `Looking up PIN for ${nm}…`;
+        }
+        try {
         const geo = await geocodeIndianPincode(pin);
         people = [{ name: nm, lat: geo.lat, lng: geo.lng, pincode: geo.pincode, marker: null }];
         currentUserName = nm;
@@ -3277,17 +3751,33 @@ out center;
           locked: false,
           started: false
         };
+        if (await testBackend()) {
+          try {
+            sessionState = await apiCreateSession(sessionState);
+            sessionId = sessionState.sessionId;
+          } catch (e) {
+            backendEnabled = false;
+          }
+        }
         serializeSessionState(sessionState);
         safeStorageSet(`session_${sessionId}_peers`, JSON.stringify(sessionState.people));
         safeStorageSet(`session_${sessionId}_requests`, JSON.stringify([]));
         document.getElementById("setupOverlay").classList.add("hidden");
-        openShareModal(sessionState, () => { void completeSetup(); }, "room");
-      } catch (e) {
-        st.classList.add("hidden");
-        err.textContent = (e && e.message) || "Could not create room.";
-        err.classList.remove("hidden");
-      }
-    });
+        openShareModal(sessionState, () => { 
+          if (sessionState && Array.isArray(sessionState.people)) {
+            people = sessionState.people.map(p => ({ name: p.name, pincode: p.pincode || "", lat: p.lat, lng: p.lng, marker: null }));
+          }
+          void completeSetup(); 
+        }, "room");
+        } catch (e) {
+          if (st) st.classList.add("hidden");
+          if (err) {
+            err.textContent = (e && e.message) || "Could not create room.";
+            err.classList.remove("hidden");
+          }
+        }
+      });
+    }
 
     document.getElementById("btnCountNext").addEventListener("click", () => {
       let n = parseInt(document.getElementById("inputCount").value, 10);
@@ -3428,9 +3918,18 @@ out center;
     }
     syncRadiusUi();
     applyMobilePanelDefault();
-    const hashState = parseSessionHash();
-    if (hashState) {
-      enterJoinMode(hashState);
+    await testBackend();
+    sessionId = parseSessionIdFromUrl();
+    if (sessionId) {
+      const state = await readSessionState(sessionId);
+      if (state) {
+        enterJoinMode(state);
+      }
+    } else {
+      const hashState = parseSessionHash();
+      if (hashState) {
+        enterJoinMode(hashState);
+      }
     }
 
     window.addEventListener("resize", () => {
