@@ -2000,8 +2000,10 @@ out center;
       return params.get("session");
     }
     function getShareUrl(sessionId) {
-      if (!sessionId) return window.location.href;
-      return `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(sessionId)}`;
+      if (backendEnabled && sessionId) {
+        return `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(sessionId)}`;
+      }
+      return `${window.location.origin}${window.location.pathname}${window.location.hash}`;
     }
     function venueKeyFor(v) {
       return `${v.name}|${v.lat.toFixed(4)}|${v.lng.toFixed(4)}`;
@@ -3608,8 +3610,7 @@ out center;
         card.innerHTML = `<h2>Session full</h2><p class="setup-lead">This meetup already has 4 people.</p><div class="setup-actions"><button type="button" id="btnLeaveJoin">Leave</button></div>`;
         overlay.appendChild(card);
         document.getElementById("btnLeaveJoin").addEventListener("click", () => {
-          window.location.hash = "";
-          window.location.reload();
+          window.location.href = window.location.pathname;
         });
         return;
       }
@@ -3622,8 +3623,7 @@ out center;
         <div class="setup-actions"><button type="button" id="btnJoinSession" class="primary">Join</button><button type="button" id="btnLeaveJoin">Leave</button></div>`;
       overlay.appendChild(card);
       document.getElementById("btnLeaveJoin").addEventListener("click", () => {
-        window.location.hash = "";
-        window.location.reload();
+        window.location.href = window.location.pathname;
       });
       document.getElementById("btnJoinSession").addEventListener("click", async () => {
         const nm = (document.getElementById("joinName").value || "").trim() || "Guest";
@@ -3920,16 +3920,15 @@ out center;
     applyMobilePanelDefault();
     await testBackend();
     sessionId = parseSessionIdFromUrl();
+    let state = null;
     if (sessionId) {
-      const state = await readSessionState(sessionId);
-      if (state) {
-        enterJoinMode(state);
-      }
-    } else {
-      const hashState = parseSessionHash();
-      if (hashState) {
-        enterJoinMode(hashState);
-      }
+      state = await readSessionState(sessionId);
+    }
+    if (!state) {
+      state = parseSessionHash();
+    }
+    if (state) {
+      enterJoinMode(state);
     }
 
     window.addEventListener("resize", () => {
