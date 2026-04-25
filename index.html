@@ -2000,6 +2000,8 @@ out center;
       return params.get("session");
     }
     function getShareUrl(sessionId) {
+      if (!sessionId) return window.location.href;
+      return `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(sessionId)}`;
       if (backendEnabled && sessionId) {
         return `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(sessionId)}`;
       }
@@ -2347,7 +2349,8 @@ out center;
         const centerKmDist = haversineKm(meetCenter.lat, meetCenter.lng, v.lat, v.lng);
         const centerKmTime = timeCenter ? haversineKm(timeCenter.lat, timeCenter.lng, v.lat, v.lng) : Number.POSITIVE_INFINITY;
         const key = venueKeyFor(v);
-        const mk = L.marker([v.lat, v.lng], { icon: venueIcon(v, likeWinner === key) }).addTo(map);
+      const likes = venueLikes[key] ? venueLikes[key].length : 0;
+      const mk = L.marker([v.lat, v.lng], { icon: venueIcon(v, likeWinner === key, likes) }).addTo(map);
         const row = { marker: mk, v, dists, sumKm, centerKmDist, centerKmTime, key };
         mk.bindPopup(popupFor(v, dists, centerKmDist, centerKmTime));
         mk.on("popupopen", () => {
@@ -3610,6 +3613,8 @@ out center;
         card.innerHTML = `<h2>Session full</h2><p class="setup-lead">This meetup already has 4 people.</p><div class="setup-actions"><button type="button" id="btnLeaveJoin">Leave</button></div>`;
         overlay.appendChild(card);
         document.getElementById("btnLeaveJoin").addEventListener("click", () => {
+          window.location.hash = "";
+          window.location.reload();
           window.location.href = window.location.pathname;
         });
         return;
@@ -3623,6 +3628,8 @@ out center;
         <div class="setup-actions"><button type="button" id="btnJoinSession" class="primary">Join</button><button type="button" id="btnLeaveJoin">Leave</button></div>`;
       overlay.appendChild(card);
       document.getElementById("btnLeaveJoin").addEventListener("click", () => {
+        window.location.hash = "";
+        window.location.reload();
         window.location.href = window.location.pathname;
       });
       document.getElementById("btnJoinSession").addEventListener("click", async () => {
@@ -3922,6 +3929,15 @@ out center;
     sessionId = parseSessionIdFromUrl();
     let state = null;
     if (sessionId) {
+      const state = await readSessionState(sessionId);
+      if (state) {
+        enterJoinMode(state);
+      }
+    } else {
+      const hashState = parseSessionHash();
+      if (hashState) {
+        enterJoinMode(hashState);
+      }
       state = await readSessionState(sessionId);
     }
     if (!state) {
