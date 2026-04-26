@@ -708,6 +708,12 @@
     }
     .venue-card:last-child { margin-bottom: 0; }
     .venue-card:hover { border-color: var(--border-hover); }
+    .venue-card.liked-card {
+      border-color: rgba(251,113,133,0.5);
+      background: rgba(251,113,133,0.03);
+      box-shadow: 0 4px 12px rgba(251,113,133,0.1);
+    }
+    .venue-card.liked-card:hover { border-color: rgba(251,113,133,0.7); }
 
     .venue-top {
       display: flex;
@@ -1228,10 +1234,14 @@
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1rem;
+      padding: 2rem 1.5rem;
       box-shadow: 0 20px 56px rgba(0,0,0,0.5);
       text-align: center;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
     }
     .spin-pointer {
       width: 0;
@@ -1244,37 +1254,52 @@
       position: relative;
       z-index: 2;
     }
-    .spin-wheel-wrap {
+    .spin-arena {
       position: relative;
-      width: min(80vw, 340px);
-      height: min(80vw, 340px);
-      margin: 0.2rem auto 0.7rem;
-    }
-    .spin-wheel {
-      width: 100%;
-      height: 100%;
+      width: min(70vw, 260px);
+      height: min(70vw, 260px);
+      margin: 0;
       border-radius: 50%;
-      border: 2px solid rgba(148,163,184,0.34);
-      position: relative;
-      transform: rotate(0deg);
+      background: radial-gradient(circle at center, rgba(16,185,129,0.05) 0%, transparent 70%);
+      flex-shrink: 0;
+    }
+    .spin-bottle-wrap {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 38px; height: 140px;
+      margin-left: -19px; margin-top: -70px;
+      transform-origin: center center;
+      z-index: 10;
       will-change: transform;
     }
-    .spin-initial {
+    .spin-avatar {
       position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      pointer-events: none;
-      font-weight: 800;
-      font-size: 0.9rem;
-      color: #f8fafc;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid;
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem;
+      transform: translate(-50%, -50%);
+      transition: all 0.3s ease;
+      z-index: 15;
     }
-    .spin-initial > span { transform: translateY(12%); }
-    .spin-sub { color: var(--muted); font-size: 0.7rem; margin-top: 0.35rem; }
-    .spin-result { margin-top: 0.5rem; font-weight: 700; }
-    .spin-actions { margin-top: 0.55rem; display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; }
+    .spin-avatar.winner {
+      transform: translate(-50%, -50%) scale(1.4);
+      box-shadow: 0 0 20px currentColor;
+      z-index: 20;
+    }
+    .spin-avatar-name {
+      position: absolute;
+      font-size: 0.7rem;
+      font-weight: 600;
+      white-space: nowrap;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      z-index: 20;
+    }
+    .spin-sub { color: var(--muted); font-size: 0.7rem; }
+    .spin-result { font-weight: 700; }
+    .spin-actions { display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; width: 100%; }
     .spin-actions button {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -1479,6 +1504,7 @@
 
     const FILTERS = [
       { id: "all",    label: "All",    icon: "map" },
+      { id: "liked",  label: "Liked",  icon: "favorite" },
       { id: "movies", label: "Movies", icon: "movie" },
       { id: "cafes",  label: "Cafés",  icon: "local_cafe" },
       { id: "malls",  label: "Malls",  icon: "storefront" },
@@ -2062,37 +2088,43 @@ out center;
     function showMidRadius(mode, previewRadiusKm) {
       const useKm = Number.isFinite(previewRadiusKm) ? previewRadiusKm : venueRadiusKm;
       const radiusM = useKm * 1000;
+      
+      if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
+      if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
+
+      if (spinWinner && spinWinner.person) {
+        const col = PERSON_COLORS[spinWinner.personIndex % PERSON_COLORS.length];
+        radiusCircleDist = L.circle([spinWinner.person.lat, spinWinner.person.lng], {
+          radius: radiusM, color: col, weight: 2, opacity: 0.8, fillColor: col, fillOpacity: 0.12
+        }).addTo(map);
+        return;
+      }
+
+      if (mode && mode.startsWith("person_")) {
+        const idx = parseInt(mode.split("_")[1], 10);
+        const p = people[idx];
+        if (p) {
+          const col = PERSON_COLORS[idx % PERSON_COLORS.length];
+          radiusCircleDist = L.circle([p.lat, p.lng], {
+            radius: radiusM, color: col, weight: 2, opacity: 0.8, fillColor: col, fillOpacity: 0.12
+          }).addTo(map);
+        }
+        return;
+      }
+
       if (mode === "dist" || mode === "both") {
-        if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
         if (meetCenter) {
           radiusCircleDist = L.circle([meetCenter.lat, meetCenter.lng], {
-            radius: radiusM,
-            color: "#34d399",
-            weight: 2,
-            opacity: 0.7,
-            fillColor: "#34d399",
-            fillOpacity: 0.12
+            radius: radiusM, color: "#34d399", weight: 2, opacity: 0.7, fillColor: "#34d399", fillOpacity: 0.12
           }).addTo(map);
         }
       }
       if (mode === "time" || mode === "both") {
-        if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
         if (timeCenter) {
           radiusCircleTime = L.circle([timeCenter.lat, timeCenter.lng], {
-            radius: radiusM,
-            color: "#3b82f6",
-            weight: 2,
-            opacity: 0.75,
-            fillColor: "#3b82f6",
-            fillOpacity: 0.12
+            radius: radiusM, color: "#3b82f6", weight: 2, opacity: 0.75, fillColor: "#3b82f6", fillOpacity: 0.12
           }).addTo(map);
         }
-      }
-      if (mode === "dist") {
-        if (radiusCircleTime) { map.removeLayer(radiusCircleTime); radiusCircleTime = null; }
-      }
-      if (mode === "time") {
-        if (radiusCircleDist) { map.removeLayer(radiusCircleDist); radiusCircleDist = null; }
       }
     }
 
@@ -2200,9 +2232,14 @@ out center;
 
     function refreshLegend() {
       const el = document.getElementById("legendBar");
-      const parts = people.map((p, i) =>
-        `<span class="legend-item"><span class="ldot" style="background:${PERSON_COLORS[i % PERSON_COLORS.length]}" aria-hidden="true"></span>${escapeHtml(p.name)}</span>`
-      );
+      const parts = people.map((p, i) => {
+        const pActive = activeMidMode === `person_${i}` ? " active" : "";
+        const c = PERSON_COLORS[i % PERSON_COLORS.length];
+        return `<button type="button" class="legend-mode-btn${pActive}" id="midModePerson${i}" style="${pActive ? `border-color:${c}; background:${c}33; color:#fff;` : ''}">
+                  <span class="ldot" style="background:${c}; margin-right:4px;" aria-hidden="true"></span>
+                  ${escapeHtml(p.name)}
+                </button>`;
+      });
       const distActive = activeMidMode === "dist" ? " active" : "";
       const timeActive = activeMidMode === "time" ? " active" : "";
       const bothActive = activeMidMode === "both" ? " active" : "";
@@ -2210,6 +2247,7 @@ out center;
         ? `<button type="button" class="legend-mode-btn${timeActive}" id="midModeTime">Time-mid</button>`
         : "";
       const busy = modeSwitchBusy ? "" : " hidden";
+      
       el.innerHTML = parts.join('<span class="legend-sep" aria-hidden="true">·</span>') +
         '<span class="legend-sep" aria-hidden="true">·</span><span class="legend-item"><span class="ldot mid" aria-hidden="true"></span></span>' +
         `<button type="button" class="legend-mode-btn${distActive}" id="midModeDist">Dist-mid</button>` +
@@ -2217,7 +2255,7 @@ out center;
         '<span class="legend-sep" aria-hidden="true">·</span>' +
         `<button type="button" class="legend-mode-btn${bothActive}" id="midModeBoth">Both</button>` +
         `<span class="legend-sep" aria-hidden="true">·</span><span class="legend-busy${busy}" id="legendBusy">Updating…</span>` +
-        '<span class="legend-sep" aria-hidden="true">·</span><span class="legend-hint">Tap Dist/Time/Both</span>';
+        '<span class="legend-sep" aria-hidden="true">·</span><span class="legend-hint">Tap Name/Dist/Time</span>';
 
       const bDist = document.getElementById("midModeDist");
       const bTime = document.getElementById("midModeTime");
@@ -2225,6 +2263,10 @@ out center;
       if (bDist) bDist.addEventListener("click", () => setMidMode("dist"));
       if (bTime) bTime.addEventListener("click", () => setMidMode("time"));
       if (bBoth) bBoth.addEventListener("click", () => setMidMode("both"));
+      people.forEach((p, i) => {
+        const b = document.getElementById(`midModePerson${i}`);
+        if (b) b.addEventListener("click", () => setMidMode(`person_${i}`));
+      });
     }
 
     // ── MAP ──
@@ -2285,16 +2327,19 @@ out center;
       return { sym:"place", border:"#64748b", fg:"#94a3b8" };
     }
 
-    function venueIcon(v, isTopPick) {
+    function venueIcon(v, isTopPick, likesCount = 0) {
+      const isLiked = likesCount > 0;
       const p = venuePinStyle(v);
-      const borderW = isTopPick ? 3 : 2;
-      const borderC = isTopPick ? "rgba(251,191,36,0.6)" : p.border;
+      const borderW = isLiked ? 3 : (isTopPick ? 3 : 2);
+      const borderC = isLiked ? "rgba(251,113,133,0.8)" : (isTopPick ? "rgba(251,191,36,0.6)" : p.border);
+      const glow = isLiked ? "0 0 15px rgba(251,113,133,0.8), 0 0 30px rgba(251,113,133,0.4)" : `0 2px 14px rgba(0,0,0,.55)`;
+      const iconColor = isLiked ? "#fda4af" : p.fg;
       return L.divIcon({
         className: "leaflet-div-icon",
         html: `<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
                justify-content:center;background:rgba(8,12,20,0.92);border:${borderW}px solid ${borderC};
-               box-shadow:0 2px 14px rgba(0,0,0,.55)">
-               <span class="material-symbols-outlined" style="font-size:20px;color:${p.fg};
+               box-shadow:${glow}">
+               <span class="material-symbols-outlined" style="font-size:20px;color:${iconColor};
                font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24">${p.sym}</span></div>`,
         iconSize: [36,36], iconAnchor: [18,18]
       });
@@ -2703,6 +2748,10 @@ out center;
     let activeFilter = "all";
 
     function matches(v) {
+      if (activeFilter === "liked") {
+        const key = venueKeyFor(v);
+        return venueLikes[key] && venueLikes[key].length > 0;
+      }
       return activeFilter === "all" || (v.cats||[]).includes(activeFilter);
     }
 
@@ -2710,6 +2759,14 @@ out center;
       if (spinWinner && spinWinner.person) {
         const dHost = haversineKm(spinWinner.person.lat, spinWinner.person.lng, row.v.lat, row.v.lng);
         return dHost <= venueRadiusKm;
+      }
+      if (activeMidMode && activeMidMode.startsWith("person_")) {
+        const idx = parseInt(activeMidMode.split("_")[1], 10);
+        const p = people[idx];
+        if (p) {
+          const dPerson = haversineKm(p.lat, p.lng, row.v.lat, row.v.lng);
+          return dPerson <= venueRadiusKm;
+        }
       }
       if (activeMidMode === "dist") return row.centerKmDist >= 0 && row.centerKmDist <= venueRadiusKm;
       if (activeMidMode === "time") return Number.isFinite(row.centerKmTime) && row.centerKmTime >= 0 && row.centerKmTime <= venueRadiusKm;
@@ -2723,9 +2780,30 @@ out center;
     }
 
     function midModeLabel() {
+      if (activeMidMode && activeMidMode.startsWith("person_")) {
+        const idx = parseInt(activeMidMode.split("_")[1], 10);
+        if (people[idx]) return escapeHtml(people[idx].name);
+      }
       if (activeMidMode === "dist") return "Dist-mid";
       if (activeMidMode === "time") return "Time-mid";
       return "Dist-mid or Time-mid";
+    }
+
+    async function fetchAndMergeVenues(lat, lng, radiusKm) {
+        try {
+            const newVenues = await fetchNearbyVenues(lat, lng, radiusKm);
+            const seen = new Set(discoveredVenues.map(v => venueKeyFor(v)));
+            let added = false;
+            newVenues.forEach(v => {
+                if (!seen.has(venueKeyFor(v))) {
+                    discoveredVenues.push(v);
+                    added = true;
+                }
+            });
+            if (added) rebuildVenueMarkersFromDiscovered();
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     async function setMidMode(mode) {
@@ -2733,14 +2811,51 @@ out center;
         showToast("Time-mid is unavailable for this setup.");
         return;
       }
-      if (mode === activeMidMode && !modeSwitchBusy) return;
-      startPlanLoader(`Switching to ${mode === "dist" ? "Dist-mid" : mode === "time" ? "Time-mid" : "Both"} view…`);
+
+      let clearedSpin = false;
+      if (spinWinner) {
+        if (backendEnabled && sessionId) {
+          try { await apiClearSpin(sessionId); } catch(e) {}
+        }
+        if (sessionId) safeStorageSet(`session_${sessionId}_spin`, "");
+        localSpinTs = 0;
+        clearSpinLocally();
+        clearedSpin = true;
+      }
+
+      if (mode === activeMidMode && !modeSwitchBusy && !clearedSpin) return;
+      let modeName = mode === "dist" ? "Dist-mid" : mode === "time" ? "Time-mid" : "Both";
+      if (mode.startsWith("person_")) {
+        const idx = parseInt(mode.split("_")[1], 10);
+        modeName = people[idx] ? people[idx].name : mode;
+      }
+      startPlanLoader(`Switching to ${modeName}…`);
       modeSwitchBusy = true;
       refreshLegend();
       await sleep(80);
       activeMidMode = mode;
+      
+      if (mode.startsWith("person_")) {
+        const idx = parseInt(mode.split("_")[1], 10);
+        const host = people[idx];
+        if (host) await fetchAndMergeVenues(host.lat, host.lng, venueRadiusKm);
+      }
+      
       applyFilter();
       showMidRadius(mode);
+
+      if (mode.startsWith("person_")) {
+        const idx = parseInt(mode.split("_")[1], 10);
+        const p = people[idx];
+        if (p) {
+          const b = L.latLngBounds([[p.lat, p.lng], [p.lat, p.lng]]);
+          vMarkers.forEach(row => {
+            if (matchesRow(row)) b.extend([row.v.lat, row.v.lng]);
+          });
+          map.fitBounds(b, { padding: [50, 50], maxZoom: 14 });
+        }
+      }
+
       await sleep(120);
       modeSwitchBusy = false;
       refreshLegend();
@@ -2818,6 +2933,9 @@ out center;
 
         const card = document.createElement("div");
         card.className = "venue-card";
+        if (venueLikes[key] && venueLikes[key].length > 0) {
+          card.classList.add("liked-card");
+        }
         card.dataset.venueKey = key;
         card.innerHTML = `
           <div class="cat-tags">${catsHtml}</div>
@@ -2946,7 +3064,10 @@ out center;
 
       if (nextWinner === likeWinner) return;
       likeWinner = nextWinner;
-      vMarkers.forEach(row => row.marker.setIcon(venueIcon(row.v, likeWinner === row.key)));
+      vMarkers.forEach(row => {
+        const likes = venueLikes[row.key] ? venueLikes[row.key].length : 0;
+        row.marker.setIcon(venueIcon(row.v, likeWinner === row.key, likes));
+      });
       refreshLikeUI();
 
       const scroller = document.querySelector(".panel-scroll");
@@ -3001,7 +3122,14 @@ out center;
       }
 
       const scoped = vMarkers.filter(matchesRow);
-      const sortedRows = scoped.slice().sort((a, b) => a.sumKm - b.sumKm);
+      const sortedRows = scoped.slice().sort((a, b) => {
+        const aLikes = venueLikes[a.key] ? venueLikes[a.key].length : 0;
+        const bLikes = venueLikes[b.key] ? venueLikes[b.key].length : 0;
+        if (aLikes !== bLikes) {
+          return bLikes - aLikes;
+        }
+        return a.sumKm - b.sumKm;
+      });
       const markerRows = sortedRows.slice(0, listVisibleLimit);
       const shownCount = Math.min(listVisibleLimit, sortedRows.length);
       vMarkers.forEach(row => {
@@ -3025,6 +3153,12 @@ out center;
       } else if (spinWinner && spinWinner.person) {
         const dHost = people.map(p => haversineKm(p.lat, p.lng, spinWinner.person.lat, spinWinner.person.lng));
         setFairnessUI(`Hosting: ${spinWinner.person.name}`, dHost);
+      } else if (activeMidMode && activeMidMode.startsWith("person_")) {
+        const idx = parseInt(activeMidMode.split("_")[1], 10);
+        if (people[idx]) {
+          const dHost = people.map(p => haversineKm(p.lat, p.lng, people[idx].lat, people[idx].lng));
+          setFairnessUI(`Focused: ${people[idx].name}`, dHost);
+        }
       } else if (people.length && meetCenter) {
         setFairnessUI("Fair meet point (Σd + W·variance)", dMid);
       }
@@ -3037,11 +3171,13 @@ out center;
         `${baseTitle} · Showing ${shownCount}/${sortedRows.length}`;
 
       const basePool = vMarkers.filter(withinVenueRadius);
-      const counts = { all: basePool.length, movies: 0, cafes: 0, malls: 0, fun: 0 };
+      const counts = { all: basePool.length, liked: 0, movies: 0, cafes: 0, malls: 0, fun: 0 };
       basePool.forEach(r => {
         (r.v.cats || []).forEach(c => {
           if (counts[c] !== undefined) counts[c] += 1;
         });
+        const k = venueKeyFor(r.v);
+        if (venueLikes[k] && venueLikes[k].length > 0) counts.liked += 1;
       });
       document.querySelectorAll(".filter-btn").forEach(b => {
         const id = b.dataset.filter;
@@ -3088,6 +3224,7 @@ out center;
       else delete venueLikes[key];
       refreshLikeUI();
       checkLikeWinner();
+      applyFilter();
       if (backendEnabled && sessionId) {
         apiToggleLike(sessionId, key, voterName, !isLiked).catch(() => {});
       }
@@ -3384,19 +3521,22 @@ out center;
       const avatarsWrap = document.getElementById("spinAvatars");
       if (!wheel || !avatarsWrap || !people.length) return;
       const segDeg = 360 / people.length;
-      const radiusPercent = 45;
+      const radiusPercent = 38;
       avatarsWrap.innerHTML = people.map((p, i) => {
         const c = PERSON_COLORS[i % PERSON_COLORS.length];
         const angle = i * segDeg;
         const rad = (angle - 90) * Math.PI / 180;
         const left = 50 + radiusPercent * Math.cos(rad);
         const top = 50 + radiusPercent * Math.sin(rad);
-        let namePos = "";
-        const angleDeg = angle % 360;
-        if (angleDeg >= 315 || angleDeg < 45) { namePos = "bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
-        else if (angleDeg >= 45 && angleDeg < 135) { namePos = "left: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
-        else if (angleDeg >= 135 && angleDeg < 225) { namePos = "top: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
-        else { namePos = "right: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
+        const tX = 28 * Math.cos(rad);
+        const tY = 28 * Math.sin(rad);
+        let xAnchor = "-50%";
+        if (Math.cos(rad) > 0.1) xAnchor = "0%";
+        else if (Math.cos(rad) < -0.1) xAnchor = "-100%";
+        let yAnchor = "-50%";
+        if (Math.sin(rad) > 0.1) yAnchor = "0%";
+        else if (Math.sin(rad) < -0.1) yAnchor = "-100%";
+        const namePos = `left: 50%; top: 50%; transform: translate(calc(${xAnchor} + ${tX}px), calc(${yAnchor} + ${tY}px)); background: rgba(8,12,20,0.7); padding: 2px 6px; border-radius: 4px;`;
         return `<div class="spin-avatar" id="spinAvatar${i}" style="left: ${left}%; top: ${top}%; border-color: ${c}; color: ${c};">
           ${escapeHtml((p.name||"?").slice(0,1).toUpperCase())}
           <div class="spin-avatar-name" style="color:${c}; ${namePos}">${escapeHtml(p.name)}</div>
@@ -3441,19 +3581,22 @@ out center;
       if (!wheel || !avatarsWrap || !people.length) return;
 
       const segDeg = 360 / people.length;
-      const radiusPercent = 45;
+      const radiusPercent = 38;
       avatarsWrap.innerHTML = people.map((p, i) => {
         const c = PERSON_COLORS[i % PERSON_COLORS.length];
         const angle = i * segDeg;
         const rad = (angle - 90) * Math.PI / 180;
         const left = 50 + radiusPercent * Math.cos(rad);
         const top = 50 + radiusPercent * Math.sin(rad);
-        let namePos = "";
-        const angleDeg = angle % 360;
-        if (angleDeg >= 315 || angleDeg < 45) { namePos = "bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
-        else if (angleDeg >= 45 && angleDeg < 135) { namePos = "left: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
-        else if (angleDeg >= 135 && angleDeg < 225) { namePos = "top: calc(100% + 12px); left: 50%; transform: translateX(-50%);"; }
-        else { namePos = "right: calc(100% + 12px); top: 50%; transform: translateY(-50%);"; }
+        const tX = 28 * Math.cos(rad);
+        const tY = 28 * Math.sin(rad);
+        let xAnchor = "-50%";
+        if (Math.cos(rad) > 0.1) xAnchor = "0%";
+        else if (Math.cos(rad) < -0.1) xAnchor = "-100%";
+        let yAnchor = "-50%";
+        if (Math.sin(rad) > 0.1) yAnchor = "0%";
+        else if (Math.sin(rad) < -0.1) yAnchor = "-100%";
+        const namePos = `left: 50%; top: 50%; transform: translate(calc(${xAnchor} + ${tX}px), calc(${yAnchor} + ${tY}px)); background: rgba(8,12,20,0.7); padding: 2px 6px; border-radius: 4px;`;
         return `<div class="spin-avatar" id="spinAvatar${i}" style="left: ${left}%; top: ${top}%; border-color: ${c}; color: ${c};">
           ${escapeHtml((p.name||"?").slice(0,1).toUpperCase())}
           <div class="spin-avatar-name" style="color:${c}; ${namePos}">${escapeHtml(p.name)}</div>
