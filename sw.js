@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'midlocation-v2';
+const CACHE_VERSION = 'midlocation-v3';
 
 const APP_SHELL_URLS = [
   '/',
@@ -93,9 +93,12 @@ async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
   const fetchPromise = fetch(request)
     .then((response) => {
-      if (response.ok) {
-        caches.open(CACHE_VERSION).then((cache) => cache.put(request, response.clone()));
-      }
+      try {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+        }
+      } catch (e) { /* ignore clone errors on opaque responses */ }
       return response;
     })
     .catch(() => cached);
