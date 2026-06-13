@@ -1,5 +1,5 @@
 const http = require('http');
-const https = require('https');
+
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -8,21 +8,6 @@ const rootDir = __dirname;
 const sessionsFile = path.join(__dirname, 'sessions.json');
 let sessions = {};
 
-// Google Places cache (24-hour TTL)
-const placesCache = {};
-const PLACES_CACHE_TTL = 24 * 60 * 60 * 1000;
-
-function httpsGetJson(reqUrl) {
-  return new Promise((resolve, reject) => {
-    https.get(reqUrl, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-      });
-    }).on('error', reject);
-  });
-}
 
 function loadSessions() {
   try {
@@ -255,73 +240,7 @@ async function handleApi(req, res) {
     sendJSON(res, { ok: true });
     return;
   }
-  // OpenTripMap proxy: GET /api/places?name=...&lat=...&lng=...
-  if (parts.length === 1 && parts[0] === 'places' && req.method === 'GET') {
-    const apiKey = process.env.OPENTRIPMAP_API_KEY;
-    if (!apiKey) {
-      sendJSON(res, { rating: null, reviewCount: null });
-      return;
-    }
-    const query = parsedUrl.query || {};
-    const name = query.name || '';
-    const lat = query.lat || '';
-    const lng = query.lng || '';
-    if (!name || !lat || !lng) {
-      sendJSON(res, { rating: null, reviewCount: null });
-      return;
-    }
-    const cacheKey = `${name}|${lat}|${lng}`;
-    const cached = placesCache[cacheKey];
-    if (cached && (Date.now() - cached.ts < PLACES_CACHE_TTL)) {
-      sendJSON(res, cached.data);
-      return;
-    }
-    try {
-      // Search nearby places within 500m radius
-      const searchUrl = `https://api.opentripmap.com/0.1/en/places/radius?lat=${lat}&lon=${lng}&radius=500&format=json&limit=10&apikey=${apiKey}`;
-      const places = await httpsGetJson(searchUrl);
-      if (!Array.isArray(places) || !places.length) {
-        const result = { rating: null, reviewCount: null };
-        placesCache[cacheKey] = { ts: Date.now(), data: result };
-        sendJSON(res, result);
-        return;
-      }
-      // Try to match by name, otherwise use the closest one
-      const nameLower = name.toLowerCase();
-      const match = places.find(p => p.name && p.name.toLowerCase().includes(nameLower))
-        || places.find(p => p.name && nameLower.includes(p.name.toLowerCase()))
-        || places[0];
-      if (!match || !match.xid) {
-        const result = { rating: null, reviewCount: null };
-        placesCache[cacheKey] = { ts: Date.now(), data: result };
-        sendJSON(res, result);
-        return;
-      }
-      // Get details for the matched place
-      const detailUrl = `https://api.opentripmap.com/0.1/en/places/xid/${match.xid}?apikey=${apiKey}`;
-      const detail = await httpsGetJson(detailUrl);
-      // OpenTripMap rate: "1","2","3" (low to high popularity), "1h","2h","3h" (heritage)
-      const rawRate = detail.rate || match.rate || '0';
-      const rateNum = parseInt(rawRate, 10);
-      // Convert 1-3 scale to approximate 5-star: 1→2.5, 2→3.5, 3→5.0
-      let rating = null;
-      if (rateNum >= 1 && rateNum <= 3) {
-        rating = [2.5, 3.5, 5.0][rateNum - 1];
-      }
-      const result = {
-        rating,
-        reviewCount: null,
-        kinds: detail.kinds || null,
-        wikipedia: detail.wikipedia || null,
-      };
-      placesCache[cacheKey] = { ts: Date.now(), data: result };
-      sendJSON(res, result);
-    } catch (e) {
-      console.error('OpenTripMap API error:', e.message);
-      sendJSON(res, { rating: null, reviewCount: null });
-    }
-    return;
-  }
+
   sendText(res, 'API endpoint not found', 404);
 }
 

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'midlocation-v4';
+const CACHE_VERSION = 'midlocation-v5';
 
 const APP_SHELL_URLS = [
   '/',
