@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -6,6 +7,22 @@ const url = require('url');
 const rootDir = __dirname;
 const sessionsFile = path.join(__dirname, 'sessions.json');
 let sessions = {};
+
+// Google Places cache (24-hour TTL)
+const placesCache = {};
+const PLACES_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function httpsGetJson(reqUrl) {
+  return new Promise((resolve, reject) => {
+    https.get(reqUrl, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
 
 function loadSessions() {
   try {
@@ -236,6 +253,52 @@ async function handleApi(req, res) {
       saveSessions();
     }
     sendJSON(res, { ok: true });
+    return;
+  }
+  // Google Places proxy: GET /api/places?name=...&lat=...&lng=...
+  if (parts.length === 1 && parts[0] === 'places' && req.method === 'GET') {
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      sendJSON(res, { rating: null, reviewCount: null });
+      return;
+    }
+    const query = parsedUrl.query || {};
+    const name = query.name || '';
+    const lat = query.lat || '';
+    const lng = query.lng || '';
+    if (!name) {
+      sendJSON(res, { rating: null, reviewCount: null });
+      return;
+    }
+    const cacheKey = `${name}|${lat}|${lng}`;
+    const cached = placesCache[cacheKey];
+    if (cached && (Date.now() - cached.ts < PLACES_CACHE_TTL)) {
+      sendJSON(res, cached.data);
+      return;
+    }
+    try {
+      const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(name)}&inputtype=textquery&locationbias=point:${lat},${lng}&fields=place_id&key=${apiKey}`;
+      const findRes = await httpsGetJson(findUrl);
+      if (!findRes.candidates || !findRes.candidates.length) {
+        const result = { rating: null, reviewCount: null };
+        placesCache[cacheKey] = { ts: Date.now(), data: result };
+        sendJSON(res, result);
+        return;
+      }
+      const placeId = findRes.candidates[0].place_id;
+      const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total&key=${apiKey}`;
+      const detailRes = await httpsGetJson(detailUrl);
+      const r = detailRes.result || {};
+      const result = {
+        rating: r.rating != null ? r.rating : null,
+        reviewCount: r.user_ratings_total != null ? r.user_ratings_total : null,
+      };
+      placesCache[cacheKey] = { ts: Date.now(), data: result };
+      sendJSON(res, result);
+    } catch (e) {
+      console.error('Places API error:', e.message);
+      sendJSON(res, { rating: null, reviewCount: null });
+    }
     return;
   }
   sendText(res, 'API endpoint not found', 404);

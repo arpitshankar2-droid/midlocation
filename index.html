@@ -756,6 +756,7 @@
       margin-bottom: 0.35rem;
       line-height: 1.35;
     }
+    .venue-rating { color: var(--spot); font-weight: 600; font-size: 0.62rem; }
 
     .venue-dist {
       display: flex;
@@ -1479,6 +1480,8 @@
         <button class="panel-btn group" id="btnGroup" type="button">Group</button>
         <button class="panel-btn share" id="btnShare" type="button">📋 Share</button>
         <button class="panel-btn group" id="btnSpin" type="button">📍 Pick a host</button>
+        <button class="panel-btn fit" id="btnSort" type="button">♡ Sort</button>
+        <button class="panel-btn fit hidden" id="btnInvite" type="button">👋 Invite more</button>
         <button class="panel-btn fit" id="btnFit" type="button">Fit map</button>
       </div>
     </div>
@@ -1930,6 +1933,10 @@ out center;
     let spinHostMarker = null;
     let venueLikes = {};
     let likeWinner = null;
+    let placesRatingsCache = {};
+    let activeSort = "likes";
+    const SORT_MODES = ["likes", "rating", "distance"];
+    const SORT_LABELS = { likes: "♡ Liked", rating: "⭐ Rated", distance: "📍 Closest" };
     const PLAN_MESSAGES = [
       "Finding optimal route for the meetup…",
       "Balancing travel time for everyone…",
@@ -1988,6 +1995,39 @@ out center;
     }
     async function apiApproveRequest(sessionId, requestId) {
       return apiRequest(`/session/${encodeURIComponent(sessionId)}/request/${encodeURIComponent(requestId)}/approve`, { method: "POST" });
+    }
+    async function apiGetPlacesRating(name, lat, lng) {
+      try {
+        const params = new URLSearchParams({ name, lat: String(lat), lng: String(lng) });
+        const res = await fetch(`${BACKEND_BASE}/places?${params}`, { cache: "no-store" });
+        if (!res.ok) return { rating: null, reviewCount: null };
+        return await res.json();
+      } catch (e) {
+        return { rating: null, reviewCount: null };
+      }
+    }
+    async function enrichVenuesWithRatings(venues) {
+      const CONCURRENCY = 3;
+      const queue = venues.filter(v => {
+        const key = `${v.name}|${v.lat}|${v.lng}`;
+        return !placesRatingsCache[key];
+      });
+      for (let i = 0; i < queue.length; i += CONCURRENCY) {
+        const batch = queue.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(batch.map(v => apiGetPlacesRating(v.name, v.lat, v.lng)));
+        batch.forEach((v, j) => {
+          const key = `${v.name}|${v.lat}|${v.lng}`;
+          placesRatingsCache[key] = results[j];
+        });
+      }
+      venues.forEach(v => {
+        const key = `${v.name}|${v.lat}|${v.lng}`;
+        const cached = placesRatingsCache[key];
+        if (cached) {
+          v.rating = cached.rating;
+          v.reviewCount = cached.reviewCount;
+        }
+      });
     }
     async function readSessionState(sessionId) {
       if (backendEnabled) {
@@ -2454,6 +2494,17 @@ out center;
           });
         }
         discoveredVenues = combined;
+        // Hydrate ratings from client-side cache immediately
+        discoveredVenues.forEach(v => {
+          const key = `${v.name}|${v.lat}|${v.lng}`;
+          const cached = placesRatingsCache[key];
+          if (cached) { v.rating = cached.rating; v.reviewCount = cached.reviewCount; }
+        });
+        // Fire async enrichment
+        enrichVenuesWithRatings(discoveredVenues).then(() => {
+          rebuildVenueMarkersFromDiscovered();
+          if (document.body.classList.contains("setup-done")) applyFilter();
+        }).catch(() => {});
       } catch (e) {
         discoveredVenues = [];
         clearVenueMarkers();
@@ -2464,7 +2515,7 @@ out center;
     }
 
     async function completeSetup() {
-      if (sessionState && !sessionState.started) {
+      if (sessionState) {
         sessionState.started = true;
         sessionState.people = people.map(p => ({ name: p.name, pincode: p.pincode || "", lat: p.lat, lng: p.lng }));
         sessionState.locked = sessionState.people.length >= 4;
@@ -2547,6 +2598,7 @@ out center;
       document.body.classList.add("setup-done");
 
       applyFilter();
+      updateInviteButtonVisibility();
       if (likeSyncTimer) clearInterval(likeSyncTimer);
       if (sessionId) {
         likeSyncTimer = setInterval(async () => {
@@ -2949,7 +3001,7 @@ out center;
             <h3>${i+1}. ${escapeHtml(v.name)}</h3>
             <span class="vibe-badge ${v.vibe}">${v.vibeLabel}</span>
           </div>
-          <p class="venue-meta">${escapeHtml(v.tag)}</p>
+          <p class="venue-meta">${escapeHtml(v.tag)}${v.rating != null ? ` <span class="venue-rating">⭐ ${v.rating}${v.reviewCount != null ? ` (${v.reviewCount})` : ''}</span>` : ''}</p>
           <div class="venue-dist">
             <span class="vd-delta">Total ${sumKm.toFixed(1)} km · ${modeKm.toFixed(1)} km from ${modeLabel}</span>
           </div>
@@ -3128,6 +3180,16 @@ out center;
 
       const scoped = vMarkers.filter(matchesRow);
       const sortedRows = scoped.slice().sort((a, b) => {
+        if (activeSort === "rating") {
+          const aR = a.v.rating != null ? a.v.rating : -1;
+          const bR = b.v.rating != null ? b.v.rating : -1;
+          if (aR !== bR) return bR - aR;
+          return a.sumKm - b.sumKm;
+        }
+        if (activeSort === "distance") {
+          return a.sumKm - b.sumKm;
+        }
+        // default: likes
         const aLikes = venueLikes[a.key] ? venueLikes[a.key].length : 0;
         const bLikes = venueLikes[b.key] ? venueLikes[b.key].length : 0;
         if (aLikes !== bLikes) {
@@ -3244,6 +3306,33 @@ out center;
       e.stopPropagation();
       const key = likeBtn.dataset.venueKey || "";
       toggleLike(key);
+    });
+
+    // ── Invite more button ──
+    function updateInviteButtonVisibility() {
+      const btn = document.getElementById("btnInvite");
+      if (!btn) return;
+      const isHost = sessionState && currentUserName === sessionState.hostName;
+      const started = sessionState && sessionState.started;
+      const notLocked = sessionState && !sessionState.locked;
+      const underLimit = people.length < 4;
+      if (isHost && started && notLocked && underLimit) {
+        btn.classList.remove("hidden");
+      } else {
+        btn.classList.add("hidden");
+      }
+    }
+    document.getElementById("btnInvite").addEventListener("click", () => {
+      if (!sessionState) return;
+      openShareModal(sessionState, () => {}, "room-live");
+    });
+
+    // ── Sort toggle ──
+    document.getElementById("btnSort").addEventListener("click", () => {
+      const idx = SORT_MODES.indexOf(activeSort);
+      activeSort = SORT_MODES[(idx + 1) % SORT_MODES.length];
+      document.getElementById("btnSort").textContent = SORT_LABELS[activeSort];
+      applyFilter();
     });
 
     // ── Fit map ──
@@ -3393,7 +3482,7 @@ out center;
       };
       const updatePending = async () => {
         if (!pendingWrap) return;
-        if (shareSessionMode !== "room") {
+        if (shareSessionMode !== "room" && shareSessionMode !== "room-live") {
           pendingWrap.classList.add("hidden");
           pendingWrap.innerHTML = "";
           return;
@@ -3452,7 +3541,7 @@ out center;
       };
       updateJoined();
       sessionPeerTimer = setInterval(updateJoined, 2000);
-      if (shareSessionMode === "room") {
+      if (shareSessionMode === "room" || shareSessionMode === "room-live") {
         updatePending();
         if (joinRequestPollTimer) clearInterval(joinRequestPollTimer);
         joinRequestPollTimer = setInterval(updatePending, 2000);
@@ -3486,6 +3575,7 @@ out center;
         };
       }
       if (startBtn) {
+        startBtn.textContent = shareSessionMode === "room-live" ? "Done" : "Start without waiting";
         startBtn.onclick = () => { closeShareModal(true); };
       }
     }
