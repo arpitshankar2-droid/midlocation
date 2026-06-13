@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6ec6ff"/>
+      <stop offset="100%" stop-color="#3a7cff"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer circle background -->
+  <circle cx="256" cy="256" r="256" fill="#080c14"/>
+  <!-- Map pin body -->
+  <path d="M256 72c-72 0-130 58-130 130 0 97 130 238 130 238s130-141 130-238c0-72-58-130-130-130z" fill="url(#g)" opacity="0.9"/>
+  <!-- Inner circle -->
+  <circle cx="256" cy="200" r="54" fill="#080c14"/>
+  <!-- People silhouette - left -->
+  <circle cx="236" cy="190" r="12" fill="#6ec6ff"/>
+  <path d="M224 206c0-6.6 5.4-12 12-12s12 5.4 12 12v14h-24v-14z" fill="#6ec6ff"/>
+  <!-- People silhouette - right -->
+  <circle cx="276" cy="190" r="12" fill="#fff"/>
+  <path d="M264 206c0-6.6 5.4-12 12-12s12 5.4 12 12v14h-24v-14z" fill="#fff"/>
+</svg>

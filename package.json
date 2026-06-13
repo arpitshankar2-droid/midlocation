@@ -1,0 +1,12 @@
+{
+  "name": "midlocation",
+  "version": "1.0.0",
+  "description": "Fair meetup planner - find the middle ground",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

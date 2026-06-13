@@ -63,8 +63,19 @@ function sendFile(res, filePath, status = 200) {
       '.svg': 'image/svg+xml',
       '.ico': 'image/x-icon',
       '.woff2': 'font/woff2',
+      '.webmanifest': 'application/manifest+json; charset=utf-8',
     };
-    res.writeHead(status, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+    const headers = { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' };
+    // Service worker must not be cached and needs proper scope header
+    if (path.basename(filePath) === 'sw.js') {
+      headers['Cache-Control'] = 'no-store, no-cache, must-revalidate';
+      headers['Service-Worker-Allowed'] = '/';
+    }
+    // Manifest should not be aggressively cached either
+    if (path.basename(filePath) === 'manifest.json') {
+      headers['Cache-Control'] = 'no-cache';
+    }
+    res.writeHead(status, headers);
     res.end(data);
   });
 }
@@ -234,8 +245,7 @@ function serveStatic(req, res) {
   let parsedUrl = url.parse(req.url);
   let pathname = parsedUrl.pathname;
   if (pathname === '/favicon.ico') {
-    res.writeHead(204);
-    res.end();
+    sendFile(res, path.join(rootDir, 'icons', 'icon.svg'));
     return;
   }
   if (pathname === '/') pathname = '/index.html';
