@@ -255,9 +255,9 @@ async function handleApi(req, res) {
     sendJSON(res, { ok: true });
     return;
   }
-  // Google Places proxy: GET /api/places?name=...&lat=...&lng=...
+  // OpenTripMap proxy: GET /api/places?name=...&lat=...&lng=...
   if (parts.length === 1 && parts[0] === 'places' && req.method === 'GET') {
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    const apiKey = process.env.OPENTRIPMAP_API_KEY;
     if (!apiKey) {
       sendJSON(res, { rating: null, reviewCount: null });
       return;
@@ -266,7 +266,7 @@ async function handleApi(req, res) {
     const name = query.name || '';
     const lat = query.lat || '';
     const lng = query.lng || '';
-    if (!name) {
+    if (!name || !lat || !lng) {
       sendJSON(res, { rating: null, reviewCount: null });
       return;
     }
@@ -277,26 +277,47 @@ async function handleApi(req, res) {
       return;
     }
     try {
-      const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(name)}&inputtype=textquery&locationbias=point:${lat},${lng}&fields=place_id&key=${apiKey}`;
-      const findRes = await httpsGetJson(findUrl);
-      if (!findRes.candidates || !findRes.candidates.length) {
+      // Search nearby places within 500m radius
+      const searchUrl = `https://api.opentripmap.com/0.1/en/places/radius?lat=${lat}&lon=${lng}&radius=500&format=json&limit=10&apikey=${apiKey}`;
+      const places = await httpsGetJson(searchUrl);
+      if (!Array.isArray(places) || !places.length) {
         const result = { rating: null, reviewCount: null };
         placesCache[cacheKey] = { ts: Date.now(), data: result };
         sendJSON(res, result);
         return;
       }
-      const placeId = findRes.candidates[0].place_id;
-      const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total&key=${apiKey}`;
-      const detailRes = await httpsGetJson(detailUrl);
-      const r = detailRes.result || {};
+      // Try to match by name, otherwise use the closest one
+      const nameLower = name.toLowerCase();
+      const match = places.find(p => p.name && p.name.toLowerCase().includes(nameLower))
+        || places.find(p => p.name && nameLower.includes(p.name.toLowerCase()))
+        || places[0];
+      if (!match || !match.xid) {
+        const result = { rating: null, reviewCount: null };
+        placesCache[cacheKey] = { ts: Date.now(), data: result };
+        sendJSON(res, result);
+        return;
+      }
+      // Get details for the matched place
+      const detailUrl = `https://api.opentripmap.com/0.1/en/places/xid/${match.xid}?apikey=${apiKey}`;
+      const detail = await httpsGetJson(detailUrl);
+      // OpenTripMap rate: "1","2","3" (low to high popularity), "1h","2h","3h" (heritage)
+      const rawRate = detail.rate || match.rate || '0';
+      const rateNum = parseInt(rawRate, 10);
+      // Convert 1-3 scale to approximate 5-star: 1→2.5, 2→3.5, 3→5.0
+      let rating = null;
+      if (rateNum >= 1 && rateNum <= 3) {
+        rating = [2.5, 3.5, 5.0][rateNum - 1];
+      }
       const result = {
-        rating: r.rating != null ? r.rating : null,
-        reviewCount: r.user_ratings_total != null ? r.user_ratings_total : null,
+        rating,
+        reviewCount: null,
+        kinds: detail.kinds || null,
+        wikipedia: detail.wikipedia || null,
       };
       placesCache[cacheKey] = { ts: Date.now(), data: result };
       sendJSON(res, result);
     } catch (e) {
-      console.error('Places API error:', e.message);
+      console.error('OpenTripMap API error:', e.message);
       sendJSON(res, { rating: null, reviewCount: null });
     }
     return;
